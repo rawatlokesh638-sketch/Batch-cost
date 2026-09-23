@@ -220,23 +220,27 @@ class MainActivity : ComponentActivity() {
                                         label = "TabContent"
                                     ) { tab ->
                                         when (tab) {
-                                            0 -> DashboardScreen(
-                                                profile = activeProfile,
-                                                products = productsWithDetails,
-                                                recordedOrders = recordedOrders,
-                                                batchCount = batchCount,
-                                                onNavigateToProducts = { viewModel.selectTab(1) },
-                                                onNavigateToBatchCalc = { viewModel.selectTab(3) },
-                                                onSelectProduct = { id -> viewModel.selectProductForDetail(id) },
-                                                onAddNewProduct = { isAddingNewProduct = true },
-                                                onRecordNewOrder = { name, prod, qty, rev, cost ->
-                                                    viewModel.recordNewOrder(name, prod, qty, rev, cost)
-                                                },
-                                                onIncrementBatchCount = {
-                                                    viewModel.incrementBatchCount()
-                                                },
-                                                onOpenWhatsApp = { showWhatsAppLink = true }
-                                            )
+                                            0 -> {
+                                                val config by viewModel.aiParsingConfig.collectAsStateWithLifecycle()
+                                                DashboardScreen(
+                                                    profile = activeProfile,
+                                                    products = productsWithDetails,
+                                                    recordedOrders = recordedOrders,
+                                                    batchCount = batchCount,
+                                                    parsingConfig = config,
+                                                    onNavigateToProducts = { viewModel.selectTab(1) },
+                                                    onNavigateToBatchCalc = { viewModel.selectTab(3) },
+                                                    onSelectProduct = { id -> viewModel.selectProductForDetail(id) },
+                                                    onAddNewProduct = { isAddingNewProduct = true },
+                                                    onRecordNewOrder = { name, prod, qty, rev, cost, status, delivery ->
+                                                        viewModel.recordNewOrder(name, prod, qty, rev, cost, status, delivery)
+                                                    },
+                                                    onIncrementBatchCount = {
+                                                        viewModel.incrementBatchCount()
+                                                    },
+                                                    onOpenWhatsApp = { showWhatsAppLink = true }
+                                                )
+                                            }
                                             1 -> ProductsScreen(
                                                 products = productsWithDetails,
                                                 currencySymbol = activeProfile.currencySymbol,

@@ -63,23 +63,37 @@ import com.example.ui.components.ProductCard
 import com.example.util.CurrencyFormatter
 import java.util.Calendar
 
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHostState
+import com.example.ui.AIParsingConfig
+import com.example.util.GeminiService
+import kotlinx.coroutines.launch
+import org.json.JSONObject
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     profile: BusinessProfileEntity,
     products: List<ProductWithDetails>,
     recordedOrders: List<RecordedOrder>,
     batchCount: Int,
+    parsingConfig: AIParsingConfig,
     onNavigateToProducts: () -> Unit,
     onNavigateToBatchCalc: () -> Unit,
     onSelectProduct: (Long) -> Unit,
     onAddNewProduct: () -> Unit,
-    onRecordNewOrder: (customerName: String, productName: String, qty: Int, revenue: Double, cost: Double) -> Unit,
+    onRecordNewOrder: (customerName: String, productName: String, qty: Int, revenue: Double, cost: Double, status: String, deliveryDate: String) -> Unit,
     onIncrementBatchCount: () -> Unit,
     onOpenWhatsApp: () -> Unit
 ) {
     val currencySym = profile.currencySymbol
+    val scope = rememberCoroutineScope()
 
     var showRecordOrderDialog by remember { mutableStateOf(false) }
+    var showQuickOfflineOrderDialog by remember { mutableStateOf(false) }
     var showCreateLabelModal by remember { mutableStateOf(false) }
     var showWhatsAppModal by remember { mutableStateOf(false) }
     var showAIAssistantSheet by remember { mutableStateOf(false) }
@@ -106,7 +120,6 @@ fun DashboardScreen(
     val lowStockCount = 0 // Future: implement real stock tracking
 
     var smartInsight by remember { mutableStateOf("Analyzing your business data...") }
-    val scope = rememberCoroutineScope()
 
     androidx.compose.runtime.LaunchedEffect(products, recordedOrders) {
         if (products.isNotEmpty()) {
@@ -244,6 +257,14 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    item {
+                        QuickActionButton(
+                            label = "🎙️ Quick Add (Offline)",
+                            icon = Icons.Default.Mic,
+                            onClick = { showQuickOfflineOrderDialog = true },
+                            testTag = "action_quick_add_offline"
+                        )
+                    }
                     item {
                         QuickActionButton(
                             label = "💬 Ask AI Business Assistant",
@@ -542,6 +563,17 @@ fun DashboardScreen(
         }
     }
 
+    if (showQuickOfflineOrderDialog) {
+        QuickOfflineOrderDialog(
+            parsingConfig = parsingConfig,
+            onDismiss = { showQuickOfflineOrderDialog = false },
+            onImport = { name, prod, qty, rev, cost, status, delivery ->
+                onRecordNewOrder(name, prod, qty, rev, cost, status, delivery)
+                showQuickOfflineOrderDialog = false
+            }
+        )
+    }
+
     // Interactive Dialogs
     if (showRecordOrderDialog) {
         RecordOrderDialog(
@@ -549,7 +581,7 @@ fun DashboardScreen(
             currencySymbol = currencySym,
             onDismiss = { showRecordOrderDialog = false },
             onConfirmOrder = { customerName, productName, qty, revenue, cost ->
-                onRecordNewOrder(customerName, productName, qty, revenue, cost)
+                onRecordNewOrder(customerName, productName, qty, revenue, cost, "Pending", "Tomorrow")
                 showRecordOrderDialog = false
             }
         )
@@ -570,7 +602,7 @@ fun DashboardScreen(
             onDismiss = { showCrmSheet = false },
             onCreateRepeatOrder = { customer ->
                 showCrmSheet = false
-                onRecordNewOrder(customer.name, customer.lastProduct, customer.lastQuantity, 400.0, 200.0)
+                onRecordNewOrder(customer.name, customer.lastProduct, customer.lastQuantity, 400.0, 200.0, "Pending", "Tomorrow")
             }
         )
     }
@@ -613,7 +645,7 @@ fun DashboardScreen(
             currencySymbol = currencySym,
             onDismiss = { showWhatsAppModal = false },
             onImportSuccess = { customerName, productName, qty, revenue, cost ->
-                onRecordNewOrder(customerName, productName, qty, revenue, cost)
+                onRecordNewOrder(customerName, productName, qty, revenue, cost, "Pending", "Tomorrow")
                 showWhatsAppModal = false
             }
         )
@@ -741,6 +773,7 @@ fun SnapshotChip(
     }
 }
 
+
 @Composable
 fun InsightCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -780,4 +813,85 @@ fun InsightCard(
             }
         }
     }
+}
+
+@Composable
+fun QuickOfflineOrderDialog(
+    parsingConfig: com.example.ui.AIParsingConfig,
+    onDismiss: () -> Unit,
+    onImport: (customerName: String, productName: String, qty: Int, revenue: Double, cost: Double, status: String, deliveryDate: String) -> Unit
+) {
+    var noteText by remember { mutableStateOf("") }
+    var isProcessing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    AlertDialog(
+        onDismissRequest = { if (!isProcessing) onDismiss() },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Mic, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Text("Smart Quick Add")
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Speak or type a quick note about the offline order (e.g., '2kg Truffle Cake for Anita tomorrow'). AI will handle the rest!",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = { noteText = it },
+                    label = { Text("Order Note") },
+                    placeholder = { Text("Example: Anita 1kg Pineapple Cake Sunday") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    enabled = !isProcessing
+                )
+                if (isProcessing) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    scope.launch {
+                        isProcessing = true
+                        val jsonString = GeminiService.parseOrderFromText(noteText, parsingConfig)
+                        try {
+                            val json = JSONObject(jsonString)
+                            val customer = json.optString("customerName", "Offline Customer")
+                            val product = json.optString("productName", "Uncategorized")
+                            val qty = json.optInt("quantity", 1)
+                            val revenue = json.optDouble("totalRevenue", 0.0)
+                            val cost = json.optDouble("totalCost", 0.0)
+                            val status = json.optString("status", "Pending")
+                            val delivery = json.optString("deliveryDate", "Pending")
+
+                            onImport(customer, product, qty, revenue, cost, status, delivery)
+                        } catch (e: Exception) {
+                            // On error, let user try again or dismiss
+                        } finally {
+                            isProcessing = false
+                        }
+                    }
+                },
+                enabled = noteText.isNotBlank() && !isProcessing
+            ) {
+                Text("Add Order")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss, enabled = !isProcessing) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun LinearProgressIndicator(modifier: Modifier) {
+    androidx.compose.material3.LinearProgressIndicator(modifier = modifier)
 }
