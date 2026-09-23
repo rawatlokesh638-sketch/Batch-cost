@@ -189,14 +189,14 @@ fun AIBusinessAssistantSheet(
                         Card(
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (isUser) MaterialTheme.colorScheme.primary else Color(0xFFF1F5F9)
+                                containerColor = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer
                             ),
                             modifier = Modifier.fillMaxWidth(0.85f)
                         ) {
                             Text(
                                 text = msg.text,
                                 modifier = Modifier.padding(12.dp),
-                                color = if (isUser) Color.White else Color.Black,
+                                color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
                                 fontSize = 14.sp
                             )
                         }

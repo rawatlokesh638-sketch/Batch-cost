@@ -167,8 +167,8 @@ class MainActivity : ComponentActivity() {
                         showWhatsAppLink -> {
                             com.example.ui.screens.whatsapp.WhatsAppIntegrationScreen(
                                 onBack = { showWhatsAppLink = false },
-                                onImportOrder = { customer, product, qty, rev, cost, notes ->
-                                    viewModel.recordNewOrder(customer, product, qty, rev, cost, "Pending", "Tomorrow")
+                                onImportOrder = { customer, product, qty, rev, cost, status, delivery, notes ->
+                                    viewModel.recordNewOrder(customer, product, qty, rev, cost, status, delivery)
                                     showWhatsAppLink = false
                                 }
                             )

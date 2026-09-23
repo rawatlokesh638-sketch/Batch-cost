@@ -25,14 +25,17 @@ import org.json.JSONObject
 @Composable
 fun WhatsAppIntegrationScreen(
     onBack: () -> Unit,
-    onImportOrder: (customerName: String, productName: String, qty: Int, revenue: Double, cost: Double, notes: String) -> Unit
+    onImportOrder: (customerName: String, productName: String, qty: Int, revenue: Double, cost: Double, status: String, deliveryDate: String, notes: String) -> Unit
 ) {
     val context = LocalContext.current
     var webView: WebView? by remember { mutableStateOf(null) }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var extractedText by remember { mutableStateOf<String?>(null) }
     var isImporting by remember { mutableStateOf(false) }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("WhatsApp Smart Link") },
@@ -45,10 +48,25 @@ fun WhatsAppIntegrationScreen(
                     Button(
                         onClick = {
                             scope.launch {
-                                isImporting = true
-                                // Simulated: In a real app with clipboard permission, we could read the clipboard
-                                // Or we could try to inject JS to get current chat text.
-                                // For now, we'll use a dialog to let them paste.
+                                // Inject JS to grab visible chat text
+                                webView?.evaluateJavascript(
+                                    "(function() { " +
+                                    "  const messages = Array.from(document.querySelectorAll('.message-in, .message-out'))" +
+                                    "    .map(m => m.innerText)" +
+                                    "    .join('\\n'); " +
+                                    "  return messages; " +
+                                    "})();"
+                                ) { result ->
+                                    if (!result.isNullOrBlank() && result != "null" && result != "\"\"") {
+                                        val cleaned = try {
+                                            JSONObject("{ \"text\": $result }").getString("text")
+                                        } catch (e: Exception) {
+                                            result.trim().removePrefix("\"").removeSuffix("\"")
+                                        }
+                                        extractedText = cleaned
+                                    }
+                                    isImporting = true
+                                }
                             }
                         },
                         modifier = Modifier.padding(end = 8.dp)
@@ -99,7 +117,7 @@ fun WhatsAppIntegrationScreen(
     }
 
     if (isImporting) {
-        var pasteText by remember { mutableStateOf("") }
+        var pasteText by remember { mutableStateOf(extractedText ?: "") }
         var isProcessing by remember { mutableStateOf(false) }
 
         AlertDialog(
@@ -131,10 +149,15 @@ fun WhatsAppIntegrationScreen(
                                 val product = json.optString("productName", "Unknown")
                                 val qty = json.optInt("quantity", 1)
                                 val rev = json.optDouble("totalRevenue", 0.0)
+                                val status = json.optString("status", "Pending")
+                                val deliveryDate = json.optString("deliveryDate", "Tomorrow")
                                 val notes = json.optString("notes", "")
                                 
-                                onImportOrder(customer, product, qty, rev, 0.0, notes)
+                                onImportOrder(customer, product, qty, rev, 0.0, status, deliveryDate, notes)
                                 isImporting = false
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Order recorded for $customer")
+                                }
                             } catch (e: Exception) {
                                 // Handle error
                             } finally {

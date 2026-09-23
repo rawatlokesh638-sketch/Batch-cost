@@ -59,6 +59,8 @@ object GeminiService {
               "productName": "...",
               "quantity": 1,
               "totalRevenue": 0.0,
+              "deliveryDate": "e.g. Tomorrow or 25th Oct",
+              "status": "e.g. Pending, New, Confirmed",
               "notes": "..."
             }
             If any field is unknown, use null or default values.
@@ -66,7 +68,12 @@ object GeminiService {
 
         return@withContext try {
             val response = model.generateContent(prompt)
-            response.text ?: ""
+            val rawText = response.text ?: ""
+            // Clean markdown if present
+            rawText.trim()
+                .removePrefix("```json")
+                .removeSuffix("```")
+                .trim()
         } catch (e: Exception) {
             ""
         }

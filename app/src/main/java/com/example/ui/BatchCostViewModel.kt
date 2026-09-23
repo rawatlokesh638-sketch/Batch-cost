@@ -441,6 +441,42 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    init {
+        loadDataFromFirebase()
+    }
+
+    private fun loadDataFromFirebase() {
+        val uid = try {
+            com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        } catch (e: Exception) {
+            null
+        } ?: return
+
+        val ref = rtdbRef?.child("users")?.child(uid) ?: return
+
+        ref.get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                viewModelScope.launch {
+                    try {
+                        // We don't overwrite Room if Room is not empty (simple conflict resolution)
+                        // But we update the non-Room flows
+                        val orders = snapshot.child("orders").children.mapNotNull { it.getValue(RecordedOrder::class.java) }
+                        val batches = snapshot.child("batches").children.mapNotNull { it.getValue(SavedBatchRecord::class.java) }
+                        val aliases = snapshot.child("productAliases").getValue(object : com.google.firebase.database.GenericTypeIndicator<Map<String, String>>() {}) ?: emptyMap()
+                        val count = snapshot.child("batchCount").getValue(Int::class.java) ?: 0
+
+                        if (orders.isNotEmpty()) _recordedOrders.value = orders
+                        if (batches.isNotEmpty()) _savedBatches.value = batches
+                        if (aliases.isNotEmpty()) _productAliases.value = aliases
+                        _batchCount.value = count
+                    } catch (e: Exception) {
+                        // Handle parse error
+                    }
+                }
+            }
+        }
+    }
+
     private fun syncDataToFirebase() {
         val uid = try {
             com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
