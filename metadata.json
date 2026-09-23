@@ -1,0 +1,6 @@
+{
+  "name": "BatchCost",
+  "description": "Calculate your real product cost, selling price & profit.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
