@@ -73,7 +73,8 @@ fun DashboardScreen(
     onSelectProduct: (Long) -> Unit,
     onAddNewProduct: () -> Unit,
     onRecordNewOrder: (customerName: String, productName: String, qty: Int, revenue: Double, cost: Double) -> Unit,
-    onIncrementBatchCount: () -> Unit
+    onIncrementBatchCount: () -> Unit,
+    onOpenWhatsApp: () -> Unit
 ) {
     val currencySym = profile.currencySymbol
 
@@ -102,6 +103,19 @@ fun DashboardScreen(
     val displayBatchesCount = batchCount
     val displayOrdersCount = recordedOrders.size
     val lowStockCount = 0 // Future: implement real stock tracking
+
+    var smartInsight by remember { mutableStateOf("Analyzing your business data...") }
+    val scope = rememberCoroutineScope()
+
+    androidx.compose.runtime.LaunchedEffect(products, recordedOrders) {
+        if (products.isNotEmpty()) {
+            val contextData = "Products: ${products.size}, Orders: ${recordedOrders.size}, Revenue: $orderRevenue, Profit: $displayProfit"
+            val prompt = "Provide a one-line, inspiring, data-driven business insight for a bakery owner based on this: $contextData. Keep it short (max 15 words)."
+            smartInsight = com.example.util.GeminiService.generateResponse(prompt, contextData)
+        } else {
+            smartInsight = "Add your first product to see smart AI business insights! 🚀"
+        }
+    }
 
     // Dynamic greeting based on hour
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -133,6 +147,33 @@ fun DashboardScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+
+        // SMART INSIGHT CARD
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = smartInsight,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             }
         }
 
@@ -217,6 +258,15 @@ fun DashboardScreen(
                             icon = Icons.Default.AutoAwesome,
                             onClick = { showAIRecipeModal = true },
                             testTag = "action_ai_recipe_importer"
+                        )
+                    }
+
+                    item {
+                        QuickActionButton(
+                            label = "📲 WhatsApp Smart Link",
+                            icon = Icons.Default.QrCode,
+                            onClick = { onOpenWhatsApp() },
+                            testTag = "action_whatsapp_link"
                         )
                     }
 
@@ -374,6 +424,18 @@ fun DashboardScreen(
                         containerColor = Color(0xFFEFF6FF),
                         iconColor = Color(0xFF2563EB)
                     )
+
+                    // SMART PROFIT ALERTS
+                    val lowMarginProducts = products.filter { it.product.sellingPrice > 0 && (it.product.sellingPrice - it.totalCost) / it.product.sellingPrice < 0.2 }
+                    if (lowMarginProducts.isNotEmpty()) {
+                        InsightCard(
+                            icon = Icons.Default.Warning,
+                            title = "Low Margin Alert",
+                            description = "⚠️ ${lowMarginProducts.size} products have less than 20% margin. Consider reviewing your prices.",
+                            containerColor = Color(0xFFFEF2F2),
+                            iconColor = Color(0xFFB91C1C)
+                        )
+                    }
                 }
             }
         }

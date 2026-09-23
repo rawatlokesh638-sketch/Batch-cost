@@ -48,9 +48,17 @@ import com.example.data.local.entity.MasterIngredientEntity
 import com.example.ui.ProductWithDetails
 import com.example.ui.RecordedOrder
 
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.util.GeminiService
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+
 data class ChatMessage(
     val sender: String, // "User" or "AI"
-    val text: String
+    val text: String,
+    val isLoading: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,6 +72,7 @@ fun AIBusinessAssistantSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var inputQuery by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     val messages = remember {
         mutableStateListOf(
@@ -74,54 +83,39 @@ fun AIBusinessAssistantSheet(
     fun answerQuery(query: String) {
         if (query.isBlank()) return
         messages.add(ChatMessage("User", query))
-        val lower = query.lowercase()
+        
+        // Add loading message
+        val loadingMsg = ChatMessage("AI", "...", isLoading = true)
+        messages.add(loadingMsg)
 
-        val response = when {
-            lower.contains("profit") || lower.contains("margin") || lower.contains("performance") -> {
-                if (recordedOrders.isEmpty()) {
-                    "📊 **Profit Analysis**: You haven't recorded any orders yet. Once you start recording orders and production batches, I can analyze your profit margins and cost trends."
-                } else {
-                    val totalRev = recordedOrders.sumOf { it.totalRevenue }
-                    val totalCost = recordedOrders.sumOf { it.totalCost }
-                    val totalProfit = totalRev - totalCost
-                    val margin = if (totalRev > 0) (totalProfit / totalRev) * 100 else 0.0
-                    
-                    val performance = recordedOrders.groupBy { it.productName }
-                        .mapValues { (_, list) -> 
-                            val rev = list.sumOf { it.totalRevenue }
-                            val cost = list.sumOf { it.totalCost }
-                            val prof = rev - cost
-                            val mar = if (rev > 0) (prof / rev) * 100 else 0.0
-                            mar
-                        }
-                        .toList()
-                        .sortedByDescending { it.second }
+        scope.launch {
+            // Prepare context data
+            val contextData = buildJsonObject {
+                put("currency", currencySymbol)
+                put("products_count", products.size)
+                put("orders_count", recordedOrders.size)
+                put("total_revenue", recordedOrders.sumOf { it.totalRevenue })
+                put("total_cost", recordedOrders.sumOf { it.totalCost })
+                
+                val productList = buildJsonArray {
+                    products.forEach { p ->
+                        add(buildJsonObject {
+                            put("name", p.product.name)
+                            put("price", p.product.sellingPrice)
+                            put("cost", p.totalCost)
+                            put("margin", if(p.product.sellingPrice > 0) ((p.product.sellingPrice - p.totalCost)/p.product.sellingPrice)*100 else 0.0)
+                        })
+                    }
+                }
+                put("products", productList)
+            }.toString()
 
-                    val topProduct = performance.firstOrNull()
-                    
-                    "🏆 **Business Performance**:\n- Total Revenue: $currencySymbol${String.format("%.0f", totalRev)}\n- Net Profit: $currencySymbol${String.format("%.0f", totalProfit)}\n- Average Margin: ${String.format("%.1f", margin)}%\n\n" +
-                    (if (topProduct != null) "💡 **Top Performer**: ${topProduct.first} has your highest margin at ${String.format("%.1f", topProduct.second)}%." else "")
-                }
-            }
-            lower.contains("order") || lower.contains("revenue") || lower.contains("sale") -> {
-                val totalRev = recordedOrders.sumOf { it.totalRevenue }
-                val count = recordedOrders.size
-                "📊 **Order Summary**:\nYou have recorded **$count orders** with a total revenue of **$currencySymbol${String.format("%.0f", totalRev)}**."
-            }
-            lower.contains("ingredient") || lower.contains("cost") || lower.contains("recipe") -> {
-                if (products.isEmpty()) {
-                    "🧑‍🍳 **Recipe Insights**: You haven't added any products yet. Add your first product recipe in the Catalog to see cost breakdowns."
-                } else {
-                    val avgCost = products.map { it.totalCost }.average()
-                    "💡 **Catalog Insights**:\nYou have **${products.size} products** in your catalog.\nAverage cost per unit across all recipes: **$currencySymbol${String.format("%.2f", avgCost)}**."
-                }
-            }
-            else -> {
-                "💡 **Business Assistant Tip**:\nI can help you analyze your margins, track orders, and understand your recipe costs. Try asking: 'What is my total revenue?' or 'Which product is most profitable?'"
-            }
+            val response = GeminiService.generateResponse(query, contextData)
+            
+            // Remove loading and add real response
+            messages.remove(loadingMsg)
+            messages.add(ChatMessage("AI", response))
         }
-
-        messages.add(ChatMessage("AI", response))
         inputQuery = ""
     }
 

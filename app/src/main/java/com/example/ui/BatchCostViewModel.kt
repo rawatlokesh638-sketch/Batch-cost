@@ -442,7 +442,12 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun syncDataToFirebase() {
-        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val uid = try {
+            com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        } catch (e: Exception) {
+            null
+        } ?: return
+        
         val ref = rtdbRef?.child("users")?.child(uid) ?: return
 
         viewModelScope.launch {

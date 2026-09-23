@@ -51,6 +51,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        try {
+            com.google.firebase.FirebaseApp.initializeApp(this)
+            val firebaseAppCheck = com.google.firebase.appcheck.FirebaseAppCheck.getInstance()
+            firebaseAppCheck.installAppCheckProviderFactory(
+                com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory.getInstance()
+            )
+        } catch (e: Exception) {
+            // Log or handle error if needed
+        }
         enableEdgeToEdge()
 
         setContent {
@@ -89,6 +98,7 @@ class MainActivity : ComponentActivity() {
                 var showAuthModal by remember { mutableStateOf(false) }
                 var showAiAssistantSheet by remember { mutableStateOf(false) }
                 var showMonetizationModal by remember { mutableStateOf(false) }
+                var showWhatsAppLink by remember { mutableStateOf(false) }
 
                 if (!isLoggedIn) {
                     com.example.ui.components.LoginSignupScreen(
@@ -154,6 +164,15 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+                        showWhatsAppLink -> {
+                            com.example.ui.screens.whatsapp.WhatsAppIntegrationScreen(
+                                onBack = { showWhatsAppLink = false },
+                                onImportOrder = { customer, product, qty, rev, cost, notes ->
+                                    viewModel.recordNewOrder(customer, product, qty, rev, cost, "Pending", "Tomorrow")
+                                    showWhatsAppLink = false
+                                }
+                            )
+                        }
                         else -> {
                             androidx.compose.material3.Scaffold(
                                 topBar = {
@@ -169,7 +188,8 @@ class MainActivity : ComponentActivity() {
                                                 onOpenTeam = { showTeamModal = true },
                                                 onOpenAuth = { showAuthModal = true },
                                                 onOpenAiAssistant = { showAiAssistantSheet = true },
-                                                onOpenMonetization = { showMonetizationModal = true }
+                                                onOpenMonetization = { showMonetizationModal = true },
+                                                onOpenWhatsAppLink = { showWhatsAppLink = true }
                                             )
                                         }
                                     )
@@ -199,7 +219,8 @@ class MainActivity : ComponentActivity() {
                                                 },
                                                 onIncrementBatchCount = {
                                                     viewModel.incrementBatchCount()
-                                                }
+                                                },
+                                                onOpenWhatsApp = { showWhatsAppLink = true }
                                             )
                                             1 -> ProductsScreen(
                                                 products = productsWithDetails,
