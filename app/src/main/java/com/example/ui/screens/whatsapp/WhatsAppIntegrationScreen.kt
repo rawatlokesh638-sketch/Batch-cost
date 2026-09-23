@@ -25,6 +25,7 @@ import org.json.JSONObject
 @Composable
 fun WhatsAppIntegrationScreen(
     onBack: () -> Unit,
+    parsingConfig: com.example.ui.AIParsingConfig,
     onImportOrder: (customerName: String, productName: String, qty: Int, revenue: Double, cost: Double, status: String, deliveryDate: String, notes: String) -> Unit
 ) {
     val context = LocalContext.current
@@ -142,7 +143,7 @@ fun WhatsAppIntegrationScreen(
                     onClick = {
                         scope.launch {
                             isProcessing = true
-                            val jsonString = GeminiService.parseOrderFromText(pasteText)
+                            val jsonString = GeminiService.parseOrderFromText(pasteText, parsingConfig)
                             try {
                                 val json = JSONObject(jsonString)
                                 val customer = json.optString("customerName", "Unknown")

@@ -42,7 +42,8 @@ fun TopOverflowMenu(
     onOpenAuth: () -> Unit,
     onOpenAiAssistant: () -> Unit,
     onOpenMonetization: () -> Unit,
-    onOpenWhatsAppLink: () -> Unit
+    onOpenWhatsAppLink: () -> Unit,
+    onOpenAIParsingConfig: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -128,6 +129,11 @@ fun TopOverflowMenu(
                 text = { Text("📲 WhatsApp Smart Link") },
                 onClick = { expanded = false; onOpenWhatsAppLink() },
                 leadingIcon = { Icon(Icons.Default.Storefront, contentDescription = null) }
+            )
+            DropdownMenuItem(
+                text = { Text("🤖 AI Parsing Rules") },
+                onClick = { expanded = false; onOpenAIParsingConfig() },
+                leadingIcon = { Icon(Icons.Default.SmartToy, contentDescription = null) }
             )
             DropdownMenuItem(
                 text = { Text("💳 Plans & Monetization") },

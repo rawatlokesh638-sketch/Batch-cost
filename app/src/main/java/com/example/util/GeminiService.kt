@@ -44,13 +44,21 @@ object GeminiService {
         }
     }
 
-    suspend fun parseOrderFromText(text: String): String = withContext(Dispatchers.IO) {
+    suspend fun parseOrderFromText(text: String, config: com.example.ui.AIParsingConfig): String = withContext(Dispatchers.IO) {
         if (BuildConfig.GEMINI_API_KEY.isBlank() || BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY") {
             return@withContext ""
         }
 
         val prompt = """
-            Extract order details from this WhatsApp message:
+            You are an order extraction AI. Extract order details from this WhatsApp message based on the following rules:
+            
+            1. Product Name: ${config.productNameRule}
+            2. Quantity: ${config.quantityRule}
+            3. Price/Revenue: ${config.priceRule}
+            
+            Business Context: ${config.customContext}
+            
+            Message:
             "$text"
             
             Return ONLY a JSON object with these fields:

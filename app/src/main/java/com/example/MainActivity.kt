@@ -99,6 +99,7 @@ class MainActivity : ComponentActivity() {
                 var showAiAssistantSheet by remember { mutableStateOf(false) }
                 var showMonetizationModal by remember { mutableStateOf(false) }
                 var showWhatsAppLink by remember { mutableStateOf(false) }
+                var showAIParsingConfig by remember { mutableStateOf(false) }
 
                 if (!isLoggedIn) {
                     com.example.ui.components.LoginSignupScreen(
@@ -165,11 +166,24 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         showWhatsAppLink -> {
+                            val config by viewModel.aiParsingConfig.collectAsStateWithLifecycle()
                             com.example.ui.screens.whatsapp.WhatsAppIntegrationScreen(
                                 onBack = { showWhatsAppLink = false },
+                                parsingConfig = config,
                                 onImportOrder = { customer, product, qty, rev, cost, status, delivery, notes ->
                                     viewModel.recordNewOrder(customer, product, qty, rev, cost, status, delivery)
                                     showWhatsAppLink = false
+                                }
+                            )
+                        }
+                        showAIParsingConfig -> {
+                            val config by viewModel.aiParsingConfig.collectAsStateWithLifecycle()
+                            com.example.ui.screens.settings.AIParsingConfigScreen(
+                                currentConfig = config,
+                                onBack = { showAIParsingConfig = false },
+                                onSave = { newConfig ->
+                                    viewModel.updateAIParsingConfig(newConfig)
+                                    showAIParsingConfig = false
                                 }
                             )
                         }
@@ -189,7 +203,8 @@ class MainActivity : ComponentActivity() {
                                                 onOpenAuth = { showAuthModal = true },
                                                 onOpenAiAssistant = { showAiAssistantSheet = true },
                                                 onOpenMonetization = { showMonetizationModal = true },
-                                                onOpenWhatsAppLink = { showWhatsAppLink = true }
+                                                onOpenWhatsAppLink = { showWhatsAppLink = true },
+                                                onOpenAIParsingConfig = { showAIParsingConfig = true }
                                             )
                                         }
                                     )

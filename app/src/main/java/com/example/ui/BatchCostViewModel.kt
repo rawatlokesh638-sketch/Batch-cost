@@ -90,6 +90,13 @@ data class SavedBatchRecord(
     val notes: String = "Standard commercial batch"
 )
 
+data class AIParsingConfig(
+    val productNameRule: String = "Look for the cake or bakery item name mentioned.",
+    val quantityRule: String = "Extract the number of items or weight (kg/pcs).",
+    val priceRule: String = "Identify the total amount or price per unit if mentioned.",
+    val customContext: String = "This is a home-based bakery named 'Sweet Treats'."
+)
+
 data class RecordedOrder(
     val id: String = java.util.UUID.randomUUID().toString(),
     val customerName: String,
@@ -189,6 +196,9 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _batchCount = MutableStateFlow(0)
     val batchCount: StateFlow<Int> = _batchCount.asStateFlow()
+
+    private val _aiParsingConfig = MutableStateFlow(AIParsingConfig())
+    val aiParsingConfig: StateFlow<AIParsingConfig> = _aiParsingConfig.asStateFlow()
 
     private val _savedBatches = MutableStateFlow<List<SavedBatchRecord>>(emptyList())
     val savedBatches: StateFlow<List<SavedBatchRecord>> = _savedBatches.asStateFlow()
@@ -464,11 +474,13 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
                         val batches = snapshot.child("batches").children.mapNotNull { it.getValue(SavedBatchRecord::class.java) }
                         val aliases = snapshot.child("productAliases").getValue(object : com.google.firebase.database.GenericTypeIndicator<Map<String, String>>() {}) ?: emptyMap()
                         val count = snapshot.child("batchCount").getValue(Int::class.java) ?: 0
+                        val config = snapshot.child("aiParsingConfig").getValue(AIParsingConfig::class.java) ?: AIParsingConfig()
 
                         if (orders.isNotEmpty()) _recordedOrders.value = orders
                         if (batches.isNotEmpty()) _savedBatches.value = batches
                         if (aliases.isNotEmpty()) _productAliases.value = aliases
                         _batchCount.value = count
+                        _aiParsingConfig.value = config
                     } catch (e: Exception) {
                         // Handle parse error
                     }
@@ -500,10 +512,16 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
                 "orders" to _recordedOrders.value,
                 "batches" to _savedBatches.value,
                 "batchCount" to _batchCount.value,
-                "productAliases" to _productAliases.value
+                "productAliases" to _productAliases.value,
+                "aiParsingConfig" to _aiParsingConfig.value
             )
             ref.setValue(data)
         }
+    }
+
+    fun updateAIParsingConfig(config: AIParsingConfig) {
+        _aiParsingConfig.value = config
+        syncDataToFirebase()
     }
 
     // Product operations
