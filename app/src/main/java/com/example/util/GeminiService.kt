@@ -7,9 +7,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 object GeminiService {
-    private val model by lazy {
+    private val model38 by lazy {
         GenerativeModel(
-            modelName = "gemini-3.5-flash",
+            modelName = "gemini-3.8-flash",
             apiKey = BuildConfig.GEMINI_API_KEY,
             generationConfig = generationConfig {
                 temperature = 0.4f
@@ -17,6 +17,46 @@ object GeminiService {
                 topP = 0.95f
             }
         )
+    }
+
+    private val modelFallback by lazy {
+        GenerativeModel(
+            modelName = "gemini-1.5-flash",
+            apiKey = BuildConfig.GEMINI_API_KEY,
+            generationConfig = generationConfig {
+                temperature = 0.4f
+                topK = 40
+                topP = 0.95f
+            }
+        )
+    }
+
+    private suspend fun generateContentSafe(prompt: String): String {
+        return try {
+            val res = model38.generateContent(prompt)
+            res.text ?: ""
+        } catch (e: Exception) {
+            try {
+                val resFallback = modelFallback.generateContent(prompt)
+                resFallback.text ?: ""
+            } catch (e2: Exception) {
+                throw e2
+            }
+        }
+    }
+
+    private suspend fun generateContentSafe(content: com.google.ai.client.generativeai.type.Content): String {
+        return try {
+            val res = model38.generateContent(content)
+            res.text ?: ""
+        } catch (e: Exception) {
+            try {
+                val resFallback = modelFallback.generateContent(content)
+                resFallback.text ?: ""
+            } catch (e2: Exception) {
+                throw e2
+            }
+        }
     }
 
     suspend fun extractBusinessInfo(text: String, config: com.example.ui.AIParsingConfig): String = withContext(Dispatchers.IO) {
@@ -48,8 +88,7 @@ object GeminiService {
         """.trimIndent()
 
         return@withContext try {
-            val response = model.generateContent(prompt)
-            val rawText = response.text ?: ""
+            val rawText = generateContentSafe(prompt)
             rawText.trim()
                 .removePrefix("```json")
                 .removeSuffix("```")
@@ -77,8 +116,8 @@ object GeminiService {
         """.trimIndent()
 
         return@withContext try {
-            val response = model.generateContent(fullPrompt)
-            response.text ?: "I'm sorry, I couldn't generate a response."
+            val text = generateContentSafe(fullPrompt)
+            text.ifBlank { "I'm sorry, I couldn't generate a response." }
         } catch (e: Exception) {
             "Error: ${e.localizedMessage}. Please check your internet and API key."
         }
@@ -117,8 +156,7 @@ object GeminiService {
                 image(bitmap)
                 text(prompt)
             }
-            val response = model.generateContent(content)
-            val rawText = response.text ?: ""
+            val rawText = generateContentSafe(content)
             rawText.trim()
                 .removePrefix("```json")
                 .removeSuffix("```")
@@ -159,8 +197,7 @@ object GeminiService {
         """.trimIndent()
 
         return@withContext try {
-            val response = model.generateContent(prompt)
-            val rawText = response.text ?: ""
+            val rawText = generateContentSafe(prompt)
             // Clean markdown if present
             rawText.trim()
                 .removePrefix("```json")
