@@ -111,6 +111,18 @@ class MainActivity : ComponentActivity() {
                 var showAiAssistantSheet by remember { mutableStateOf(false) }
                 var showMonetizationModal by remember { mutableStateOf(false) }
                 var showWhatsAppLink by remember { mutableStateOf(false) }
+                var sharedTextFromIntent by remember {
+                    mutableStateOf(
+                        if (intent?.action == android.content.Intent.ACTION_SEND && intent?.type?.startsWith("text/") == true) {
+                            intent?.getStringExtra(android.content.Intent.EXTRA_TEXT)
+                        } else null
+                    )
+                }
+                androidx.compose.runtime.LaunchedEffect(sharedTextFromIntent) {
+                    if (!sharedTextFromIntent.isNullOrBlank()) {
+                        showWhatsAppLink = true
+                    }
+                }
                 var showAIParsingConfig by remember { mutableStateOf(false) }
                 var showVisualScanner by remember { mutableStateOf(false) }
                 var showOrderLinkGen by remember { mutableStateOf(false) }
@@ -185,11 +197,14 @@ class MainActivity : ComponentActivity() {
                         showWhatsAppLink -> {
                             val config by viewModel.aiParsingConfig.collectAsStateWithLifecycle()
                             com.example.ui.screens.whatsapp.WhatsAppIntegrationScreen(
-                                onBack = { showWhatsAppLink = false },
+                                onBack = { 
+                                    showWhatsAppLink = false
+                                    sharedTextFromIntent = null
+                                },
                                 parsingConfig = config,
+                                initialSharedText = sharedTextFromIntent,
                                 onImportOrder = { customer, product, qty, rev, cost, status, delivery, notes ->
                                     viewModel.recordNewOrder(customer, product, qty, rev, cost, status, delivery)
-                                    showWhatsAppLink = false
                                 }
                             )
                         }

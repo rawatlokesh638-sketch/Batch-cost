@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">BatchCost</string>
+    <string name="accessibility_service_description">Enables Agent 3.8 Flash to automatically detect and scan bakery cake orders inside WhatsApp without manual copy-pasting.</string>
 </resources>

@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import java.util.UUID
 
 enum class CloudSyncStatus {
     IDLE,
@@ -35,6 +36,7 @@ enum class CloudSyncStatus {
 }
 
 class FirebaseSyncManager(
+    private val context: Context,
     private val profileDao: BusinessProfileDao,
     private val productDao: ProductDao,
     private val masterIngredientDao: MasterIngredientDao,
@@ -42,32 +44,60 @@ class FirebaseSyncManager(
     private val scope: CoroutineScope
 ) {
     private val TAG = "FirebaseSyncManager"
+    private val RTDB_URL = "https://gen-lang-client-0661181674-default-rtdb.firebaseio.com"
+    private val FIRESTORE_DB_ID = "ai-studio-batchcost-769eeb29-ae9d-4653-95cf-9e7e5c2f52ea"
 
-    private val auth: FirebaseAuth? = try {
-        FirebaseAuth.getInstance()
-    } catch (e: Exception) {
-        Log.e(TAG, "FirebaseAuth init failed", e)
-        null
-    }
-
-    private val firestore: FirebaseFirestore? = try {
-        val app = FirebaseApp.getInstance()
+    private val auth: FirebaseAuth? by lazy {
         try {
-            // Target specific firestore database ID
-            FirebaseFirestore.getInstance(app, "ai-studio-batchcost-769eeb29-ae9d-4653-95cf-9e7e5c2f52ea")
+            FirebaseAuth.getInstance()
         } catch (e: Exception) {
-            FirebaseFirestore.getInstance(app)
+            Log.e(TAG, "FirebaseAuth init failed", e)
+            null
         }
-    } catch (e: Exception) {
-        Log.e(TAG, "FirebaseFirestore init failed", e)
-        null
     }
 
-    private val rtdb: FirebaseDatabase? = try {
-        FirebaseDatabase.getInstance()
-    } catch (e: Exception) {
-        Log.e(TAG, "FirebaseDatabase init failed", e)
-        null
+    private val firestoreNamed: FirebaseFirestore? by lazy {
+        try {
+            val app = FirebaseApp.getInstance()
+            FirebaseFirestore.getInstance(app, FIRESTORE_DB_ID)
+        } catch (e: Exception) {
+            Log.w(TAG, "Named Firestore init failed: ${e.message}")
+            null
+        }
+    }
+
+    private val firestoreDefault: FirebaseFirestore? by lazy {
+        try {
+            val app = FirebaseApp.getInstance()
+            FirebaseFirestore.getInstance(app)
+        } catch (e: Exception) {
+            Log.w(TAG, "Default Firestore init failed: ${e.message}")
+            null
+        }
+    }
+
+    private val rtdbNamed: FirebaseDatabase? by lazy {
+        try {
+            val db = FirebaseDatabase.getInstance(RTDB_URL)
+            db.setPersistenceEnabled(true)
+            db
+        } catch (e: Exception) {
+            try {
+                FirebaseDatabase.getInstance(RTDB_URL)
+            } catch (e2: Exception) {
+                Log.w(TAG, "Named RTDB init failed: ${e2.message}")
+                null
+            }
+        }
+    }
+
+    private val rtdbDefault: FirebaseDatabase? by lazy {
+        try {
+            FirebaseDatabase.getInstance()
+        } catch (e: Exception) {
+            Log.w(TAG, "Default RTDB init failed: ${e.message}")
+            null
+        }
     }
 
     private val _syncStatus = MutableStateFlow(CloudSyncStatus.IDLE)
@@ -76,42 +106,44 @@ class FirebaseSyncManager(
     private val _lastSyncTimestamp = MutableStateFlow<Long>(System.currentTimeMillis())
     val lastSyncTimestamp: StateFlow<Long> = _lastSyncTimestamp.asStateFlow()
 
+    private val _syncMessage = MutableStateFlow("Firebase Ready")
+    val syncMessage: StateFlow<String> = _syncMessage.asStateFlow()
+
     init {
-        ensureAuthenticated {
-            // On startup, check and sync from cloud
-            scope.launch {
-                loadFromCloudInternal()
-            }
-        }
-    }
-
-    fun ensureAuthenticated(onAuthenticated: ((String) -> Unit)? = null) {
-        val currentUid = auth?.currentUser?.uid
-        if (currentUid != null) {
-            onAuthenticated?.invoke(currentUid)
-            return
-        }
-
-        // Seamless anonymous authentication so every device automatically has a cloud sync UID
-        auth?.signInAnonymously()?.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val newUid = auth.currentUser?.uid
-                Log.d(TAG, "Firebase anonymous auth successful. UID: $newUid")
-                if (newUid != null) {
-                    onAuthenticated?.invoke(newUid)
+        // Try background anonymous auth if not logged in
+        try {
+            if (auth?.currentUser == null) {
+                auth?.signInAnonymously()?.addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Log.d(TAG, "Anonymous sign-in success: ${task.result?.user?.uid}")
+                    }
                 }
-            } else {
-                Log.w(TAG, "Firebase anonymous auth failed", task.exception)
             }
+        } catch (e: Exception) {
+            Log.w(TAG, "Anonymous auth attempt caught: ${e.message}")
         }
-    }
-
-    fun getUserId(): String? {
-        return auth?.currentUser?.uid
     }
 
     /**
-     * Push all local data (Room DB + StateFlows) to Firebase Firestore & RTDB
+     * Resolves a guaranteed non-null User ID.
+     * Uses FirebaseAuth UID if available; otherwise uses a persistent device ID.
+     */
+    fun resolveUserId(): String {
+        val authUid = auth?.currentUser?.uid
+        if (!authUid.isNullOrBlank()) {
+            return authUid
+        }
+        val prefs = context.getSharedPreferences("firebase_sync_prefs", Context.MODE_PRIVATE)
+        var devId = prefs.getString("persistent_device_uid", "") ?: ""
+        if (devId.isBlank()) {
+            devId = "device_" + UUID.randomUUID().toString().replace("-", "").take(12)
+            prefs.edit().putString("persistent_device_uid", devId).apply()
+        }
+        return devId
+    }
+
+    /**
+     * Pushes all local Room entities and in-memory orders/batches to Firebase Firestore & RTDB.
      */
     fun syncAllToCloud(
         orders: List<RecordedOrder>,
@@ -121,53 +153,40 @@ class FirebaseSyncManager(
         parsingConfig: AIParsingConfig,
         onComplete: ((Boolean) -> Unit)? = null
     ) {
-        val uid = getUserId()
-        if (uid == null) {
-            ensureAuthenticated { validUid ->
-                performSync(validUid, orders, batches, aliases, batchCount, parsingConfig, onComplete)
-            }
-            return
-        }
-
-        performSync(uid, orders, batches, aliases, batchCount, parsingConfig, onComplete)
-    }
-
-    private fun performSync(
-        uid: String,
-        orders: List<RecordedOrder>,
-        batches: List<SavedBatchRecord>,
-        aliases: Map<String, String>,
-        batchCount: Int,
-        parsingConfig: AIParsingConfig,
-        onComplete: ((Boolean) -> Unit)?
-    ) {
+        val uid = resolveUserId()
         scope.launch(Dispatchers.IO) {
             _syncStatus.value = CloudSyncStatus.SYNCING
-            try {
-                val profile = profileDao.getBusinessProfileOnce()
-                val products = productDao.getAllProductsSync()
-                val recipeIngredients = recipeIngredientDao.getAllRecipeIngredientsSync()
-                val masterIngredients = masterIngredientDao.getAllMasterIngredientsSync()
+            _syncMessage.value = "Syncing with Firebase Cloud..."
+            var firestoreSuccess = false
+            var rtdbSuccess = false
+            var errorDetails = ""
 
-                val syncPayload = hashMapOf<String, Any>(
-                    "updatedAt" to System.currentTimeMillis(),
-                    "batchCount" to batchCount,
-                    "productAliases" to aliases,
-                    "parsingConfig" to mapOf(
-                        "productNameRule" to parsingConfig.productNameRule,
-                        "quantityRule" to parsingConfig.quantityRule,
-                        "priceRule" to parsingConfig.priceRule,
-                        "customContext" to parsingConfig.customContext
-                    ),
-                    "ordersCount" to orders.size,
-                    "productsCount" to products.size,
-                    "batchesCount" to batches.size
-                )
+            val profile = profileDao.getBusinessProfileOnce()
+            val products = productDao.getAllProductsSync()
+            val recipeIngredients = recipeIngredientDao.getAllRecipeIngredientsSync()
+            val masterIngredients = masterIngredientDao.getAllMasterIngredientsSync()
 
-                // 1. Sync to Firebase Firestore
-                firestore?.let { db ->
+            val timestamp = System.currentTimeMillis()
+
+            // 1. Sync to Firebase Firestore
+            val fsTargets = listOfNotNull(firestoreNamed, firestoreDefault)
+            for (db in fsTargets) {
+                try {
                     val userDoc = db.collection("users").document(uid)
-                    userDoc.set(syncPayload, SetOptions.merge()).await()
+                    val metadata = hashMapOf<String, Any>(
+                        "updatedAt" to timestamp,
+                        "batchCount" to batchCount,
+                        "productAliases" to aliases,
+                        "parsingConfig" to mapOf(
+                            "productNameRule" to parsingConfig.productNameRule,
+                            "quantityRule" to parsingConfig.quantityRule,
+                            "priceRule" to parsingConfig.priceRule,
+                            "customContext" to parsingConfig.customContext
+                        ),
+                        "ordersCount" to orders.size,
+                        "productsCount" to products.size
+                    )
+                    userDoc.set(metadata, SetOptions.merge()).await()
 
                     profile?.let {
                         userDoc.collection("profile").document("current").set(it).await()
@@ -202,36 +221,62 @@ class FirebaseSyncManager(
                     for (b in batches) {
                         batchesCol.document(b.id).set(b).await()
                     }
-                }
 
-                // 2. Also Mirror to Firebase Realtime Database
-                rtdb?.let { db ->
+                    firestoreSuccess = true
+                    Log.d(TAG, "Firestore sync SUCCESS on ${db.firestoreSettings.host}")
+                    break // Succeeded with primary target
+                } catch (e: Exception) {
+                    errorDetails += " [Firestore: ${e.localizedMessage}]"
+                    Log.w(TAG, "Firestore sync attempt failed: ${e.message}")
+                }
+            }
+
+            // 2. Sync to Firebase Realtime Database
+            val rtdbTargets = listOfNotNull(rtdbNamed, rtdbDefault)
+            val rtdbPayload = mapOf(
+                "profile" to profile,
+                "products" to products,
+                "recipeIngredients" to recipeIngredients,
+                "masterIngredients" to masterIngredients,
+                "orders" to orders,
+                "batches" to batches,
+                "batchCount" to batchCount,
+                "productAliases" to aliases,
+                "aiParsingConfig" to parsingConfig,
+                "lastSync" to timestamp
+            )
+
+            for (db in rtdbTargets) {
+                try {
                     val userRef = db.reference.child("users").child(uid)
-                    val rtdbPayload = mapOf(
-                        "profile" to profile,
-                        "products" to products,
-                        "recipeIngredients" to recipeIngredients,
-                        "masterIngredients" to masterIngredients,
-                        "orders" to orders,
-                        "batches" to batches,
-                        "batchCount" to batchCount,
-                        "productAliases" to aliases,
-                        "aiParsingConfig" to parsingConfig,
-                        "lastSync" to System.currentTimeMillis()
-                    )
                     userRef.setValue(rtdbPayload).await()
-                }
 
-                _lastSyncTimestamp.value = System.currentTimeMillis()
-                _syncStatus.value = CloudSyncStatus.SUCCESS
-                Log.d(TAG, "Full Firebase sync successful for UID: $uid")
-                withContext(Dispatchers.Main) {
-                    onComplete?.invoke(true)
+                    // Also mirror into a device backup node
+                    db.reference.child("device_backups").child(uid).setValue(rtdbPayload).await()
+
+                    rtdbSuccess = true
+                    Log.d(TAG, "RTDB sync SUCCESS on ${db.reference}")
+                    break
+                } catch (e: Exception) {
+                    errorDetails += " [RTDB: ${e.localizedMessage}]"
+                    Log.w(TAG, "RTDB sync attempt failed: ${e.message}")
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Firebase sync failed", e)
-                _syncStatus.value = CloudSyncStatus.ERROR
-                withContext(Dispatchers.Main) {
+            }
+
+            val overallSuccess = firestoreSuccess || rtdbSuccess
+            withContext(Dispatchers.Main) {
+                if (overallSuccess) {
+                    _syncStatus.value = CloudSyncStatus.SUCCESS
+                    _lastSyncTimestamp.value = timestamp
+                    val channel = if (firestoreSuccess && rtdbSuccess) "Firestore + RTDB" 
+                                  else if (firestoreSuccess) "Firestore" else "RTDB"
+                    _syncMessage.value = "Synced successfully to $channel"
+                    Log.i(TAG, "Cloud sync complete for UID $uid ($channel)")
+                    onComplete?.invoke(true)
+                } else {
+                    _syncStatus.value = CloudSyncStatus.ERROR
+                    _syncMessage.value = "Sync error: $errorDetails"
+                    Log.e(TAG, "Cloud sync failed for UID $uid: $errorDetails")
                     onComplete?.invoke(false)
                 }
             }
@@ -239,7 +284,7 @@ class FirebaseSyncManager(
     }
 
     /**
-     * Pull data from Firebase (Firestore / RTDB) and restore into local Room and callback
+     * Pulls data from Firebase (RTDB or Firestore) and restores into local state.
      */
     suspend fun loadFromCloud(
         onOrdersLoaded: (List<RecordedOrder>) -> Unit,
@@ -248,142 +293,132 @@ class FirebaseSyncManager(
         onBatchCountLoaded: (Int) -> Unit,
         onConfigLoaded: (AIParsingConfig) -> Unit
     ) = withContext(Dispatchers.IO) {
-        val uid = getUserId() ?: return@withContext
-        _syncStatus.value = CloudSyncStatus.SYNCING
-        try {
-            var restored = false
+        val uid = resolveUserId()
+        var restored = false
 
-            // Try Firestore first
-            firestore?.let { db ->
-                val userDoc = db.collection("users").document(uid)
-                val snapshot = userDoc.get().await()
-
+        // 1. Try RTDB first
+        val rtdbTargets = listOfNotNull(rtdbNamed, rtdbDefault)
+        for (db in rtdbTargets) {
+            try {
+                val snapshot = db.reference.child("users").child(uid).get().await()
                 if (snapshot.exists()) {
-                    // Profile
-                    val profileSnap = userDoc.collection("profile").document("current").get().await()
-                    if (profileSnap.exists()) {
-                        profileSnap.toObject(BusinessProfileEntity::class.java)?.let {
-                            profileDao.saveBusinessProfile(it)
-                        }
-                    }
-
-                    // Products
-                    val productsSnap = userDoc.collection("products").get().await()
-                    val cloudProducts = productsSnap.documents.mapNotNull { it.toObject(ProductEntity::class.java) }
-                    if (cloudProducts.isNotEmpty()) {
-                        for (cp in cloudProducts) {
-                            productDao.insertProduct(cp)
-                        }
-                    }
-
-                    // Recipe Ingredients
-                    val recipeSnap = userDoc.collection("recipe_ingredients").get().await()
-                    val cloudRecipeIngs = recipeSnap.documents.mapNotNull { it.toObject(RecipeIngredientEntity::class.java) }
-                    if (cloudRecipeIngs.isNotEmpty()) {
-                        recipeIngredientDao.insertRecipeIngredients(cloudRecipeIngs)
-                    }
-
-                    // Master Ingredients
-                    val masterSnap = userDoc.collection("master_ingredients").get().await()
-                    val cloudMasterIngs = masterSnap.documents.mapNotNull { it.toObject(MasterIngredientEntity::class.java) }
-                    if (cloudMasterIngs.isNotEmpty()) {
-                        for (mi in cloudMasterIngs) {
-                            masterIngredientDao.insertMasterIngredient(mi)
-                        }
-                    }
-
-                    // Orders
-                    val ordersSnap = userDoc.collection("orders").get().await()
-                    val cloudOrders = ordersSnap.documents.mapNotNull { it.toObject(RecordedOrder::class.java) }
-                    if (cloudOrders.isNotEmpty()) {
-                        withContext(Dispatchers.Main) {
-                            onOrdersLoaded(cloudOrders)
-                        }
-                    }
-
-                    // Batches
-                    val batchesSnap = userDoc.collection("batches").get().await()
-                    val cloudBatches = batchesSnap.documents.mapNotNull { it.toObject(SavedBatchRecord::class.java) }
-                    if (cloudBatches.isNotEmpty()) {
-                        withContext(Dispatchers.Main) {
-                            onBatchesLoaded(cloudBatches)
-                        }
-                    }
-
-                    // Config & Aliases
-                    val aliases = snapshot.get("productAliases") as? Map<String, String> ?: emptyMap()
-                    val count = (snapshot.get("batchCount") as? Number)?.toInt() ?: 0
-                    val configMap = snapshot.get("parsingConfig") as? Map<String, Any>
-                    val config = if (configMap != null) {
-                        AIParsingConfig(
-                            productNameRule = configMap["productNameRule"] as? String ?: "",
-                            quantityRule = configMap["quantityRule"] as? String ?: "",
-                            priceRule = configMap["priceRule"] as? String ?: "",
-                            customContext = configMap["customContext"] as? String ?: ""
-                        )
-                    } else {
-                        AIParsingConfig()
-                    }
+                    val orders = snapshot.child("orders").children.mapNotNull { it.getValue(RecordedOrder::class.java) }
+                    val batches = snapshot.child("batches").children.mapNotNull { it.getValue(SavedBatchRecord::class.java) }
+                    val aliases = snapshot.child("productAliases").getValue(object : com.google.firebase.database.GenericTypeIndicator<Map<String, String>>() {}) ?: emptyMap()
+                    val count = snapshot.child("batchCount").getValue(Int::class.java) ?: 0
+                    val config = snapshot.child("aiParsingConfig").getValue(AIParsingConfig::class.java) ?: AIParsingConfig()
 
                     withContext(Dispatchers.Main) {
+                        if (orders.isNotEmpty()) onOrdersLoaded(orders)
+                        if (batches.isNotEmpty()) onBatchesLoaded(batches)
                         if (aliases.isNotEmpty()) onAliasesLoaded(aliases)
                         onBatchCountLoaded(count)
                         onConfigLoaded(config)
                     }
 
-                    restored = true
-                }
-            }
+                    // Restore room profile if empty locally
+                    val localProfile = profileDao.getBusinessProfileOnce()
+                    if (localProfile == null) {
+                        val cloudProfile = snapshot.child("profile").getValue(BusinessProfileEntity::class.java)
+                        if (cloudProfile != null) {
+                            profileDao.saveBusinessProfile(cloudProfile)
+                        }
+                    }
 
-            // If not restored from Firestore, fallback to RTDB
-            if (!restored) {
-                rtdb?.let { db ->
-                    val snapshot = db.reference.child("users").child(uid).get().await()
+                    // Restore master ingredients if empty locally
+                    val localIngredients = masterIngredientDao.getAllMasterIngredientsSync()
+                    if (localIngredients.isEmpty()) {
+                        val cloudIngredients = snapshot.child("masterIngredients").children.mapNotNull { it.getValue(MasterIngredientEntity::class.java) }
+                        for (ing in cloudIngredients) {
+                            masterIngredientDao.insertMasterIngredient(ing)
+                        }
+                    }
+
+                    // Restore products if empty locally
+                    val localProducts = productDao.getAllProductsSync()
+                    if (localProducts.isEmpty()) {
+                        val cloudProducts = snapshot.child("products").children.mapNotNull { it.getValue(ProductEntity::class.java) }
+                        for (p in cloudProducts) {
+                            productDao.insertProduct(p)
+                        }
+                        val cloudRecipeIngs = snapshot.child("recipeIngredients").children.mapNotNull { it.getValue(RecipeIngredientEntity::class.java) }
+                        if (cloudRecipeIngs.isNotEmpty()) {
+                            recipeIngredientDao.insertRecipeIngredients(cloudRecipeIngs)
+                        }
+                    }
+
+                    restored = true
+                    Log.d(TAG, "Restored data from RTDB successfully")
+                    break
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "RTDB load attempt failed: ${e.message}")
+            }
+        }
+
+        // 2. Try Firestore if not restored
+        if (!restored) {
+            val fsTargets = listOfNotNull(firestoreNamed, firestoreDefault)
+            for (db in fsTargets) {
+                try {
+                    val userDoc = db.collection("users").document(uid)
+                    val snapshot = userDoc.get().await()
                     if (snapshot.exists()) {
-                        val cloudOrders = snapshot.child("orders").children.mapNotNull { it.getValue(RecordedOrder::class.java) }
-                        val cloudBatches = snapshot.child("batches").children.mapNotNull { it.getValue(SavedBatchRecord::class.java) }
-                        val aliases = snapshot.child("productAliases").getValue(object : com.google.firebase.database.GenericTypeIndicator<Map<String, String>>() {}) ?: emptyMap()
-                        val count = snapshot.child("batchCount").getValue(Int::class.java) ?: 0
-                        val config = snapshot.child("aiParsingConfig").getValue(AIParsingConfig::class.java) ?: AIParsingConfig()
+                        val ordersSnap = userDoc.collection("orders").get().await()
+                        val orders = ordersSnap.documents.mapNotNull { it.toObject(RecordedOrder::class.java) }
+                        val batchesSnap = userDoc.collection("batches").get().await()
+                        val batches = batchesSnap.documents.mapNotNull { it.toObject(SavedBatchRecord::class.java) }
+
+                        val aliases = (snapshot.get("productAliases") as? Map<*, *>)?.entries?.associate { 
+                            it.key.toString() to it.value.toString() 
+                        } ?: emptyMap()
+                        val count = (snapshot.getLong("batchCount") ?: 0L).toInt()
 
                         withContext(Dispatchers.Main) {
-                            if (cloudOrders.isNotEmpty()) onOrdersLoaded(cloudOrders)
-                            if (cloudBatches.isNotEmpty()) onBatchesLoaded(cloudBatches)
+                            if (orders.isNotEmpty()) onOrdersLoaded(orders)
+                            if (batches.isNotEmpty()) onBatchesLoaded(batches)
                             if (aliases.isNotEmpty()) onAliasesLoaded(aliases)
                             onBatchCountLoaded(count)
-                            onConfigLoaded(config)
                         }
-                    }
-                }
-            }
 
-            _lastSyncTimestamp.value = System.currentTimeMillis()
-            _syncStatus.value = CloudSyncStatus.SUCCESS
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading from cloud", e)
-            _syncStatus.value = CloudSyncStatus.ERROR
-        }
-    }
+                        // Restore profile
+                        val profileDoc = userDoc.collection("profile").document("current").get().await()
+                        val cloudProfile = profileDoc.toObject(BusinessProfileEntity::class.java)
+                        if (cloudProfile != null && profileDao.getBusinessProfileOnce() == null) {
+                            profileDao.saveBusinessProfile(cloudProfile)
+                        }
 
-    private suspend fun loadFromCloudInternal() {
-        // Internal silent check on launch
-        val uid = getUserId() ?: return
-        try {
-            firestore?.let { db ->
-                val snapshot = db.collection("users").document(uid).get().await()
-                if (snapshot.exists()) {
-                    val profileSnap = db.collection("users").document(uid).collection("profile").document("current").get().await()
-                    if (profileSnap.exists()) {
-                        profileSnap.toObject(BusinessProfileEntity::class.java)?.let {
-                            if (profileDao.getBusinessProfileOnce() == null) {
-                                profileDao.saveBusinessProfile(it)
+                        // Restore products
+                        val productsSnap = userDoc.collection("products").get().await()
+                        val cloudProducts = productsSnap.documents.mapNotNull { it.toObject(ProductEntity::class.java) }
+                        if (cloudProducts.isNotEmpty() && productDao.getAllProductsSync().isEmpty()) {
+                            for (p in cloudProducts) {
+                                productDao.insertProduct(p)
+                            }
+                            val recipeSnap = userDoc.collection("recipe_ingredients").get().await()
+                            val recipeIngs = recipeSnap.documents.mapNotNull { it.toObject(RecipeIngredientEntity::class.java) }
+                            if (recipeIngs.isNotEmpty()) {
+                                recipeIngredientDao.insertRecipeIngredients(recipeIngs)
                             }
                         }
+
+                        // Restore master ingredients
+                        val masterSnap = userDoc.collection("master_ingredients").get().await()
+                        val cloudMasterIngs = masterSnap.documents.mapNotNull { it.toObject(MasterIngredientEntity::class.java) }
+                        if (cloudMasterIngs.isNotEmpty() && masterIngredientDao.getAllMasterIngredientsSync().isEmpty()) {
+                            for (mi in cloudMasterIngs) {
+                                masterIngredientDao.insertMasterIngredient(mi)
+                            }
+                        }
+
+                        restored = true
+                        Log.d(TAG, "Restored data from Firestore successfully")
+                        break
                     }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Firestore load attempt failed: ${e.message}")
                 }
             }
-        } catch (e: Exception) {
-            // Ignore background init error
         }
     }
 }

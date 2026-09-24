@@ -154,6 +154,7 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
     private val recipeIngredientDao = db.recipeIngredientDao()
 
     val syncManager = FirebaseSyncManager(
+        context = application.applicationContext,
         profileDao = profileDao,
         productDao = productDao,
         masterIngredientDao = masterIngredientDao,
@@ -163,6 +164,7 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
 
     val cloudSyncStatus: StateFlow<CloudSyncStatus> = syncManager.syncStatus
     val lastCloudSyncTime: StateFlow<Long> = syncManager.lastSyncTimestamp
+    val cloudSyncMessage: StateFlow<String> = syncManager.syncMessage
 
     val businessProfile: StateFlow<BusinessProfileEntity?> = profileDao.getBusinessProfile()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -460,6 +462,23 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
 
     init {
         loadDataFromFirebase()
+        com.example.service.WhatsAppOrderCaptureHub.parsingConfig = _aiParsingConfig.value
+        com.example.service.WhatsAppOrderCaptureHub.registerOrderRecordedListener { captured ->
+            recordNewOrder(
+                customerName = captured.customerName,
+                productName = captured.productName,
+                qty = captured.quantity,
+                revenue = captured.totalRevenue,
+                cost = captured.totalRevenue * 0.45,
+                status = "Confirmed",
+                deliveryDate = captured.deliveryDate
+            )
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        com.example.service.WhatsAppOrderCaptureHub.unregisterOrderRecordedListener()
     }
 
     fun loadDataFromFirebase() {
