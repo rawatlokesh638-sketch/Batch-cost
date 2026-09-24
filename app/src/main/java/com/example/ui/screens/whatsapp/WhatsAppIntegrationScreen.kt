@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.BuildConfig
 import com.example.util.GeminiService
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -34,6 +35,7 @@ fun WhatsAppIntegrationScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var extractedText by remember { mutableStateOf<String?>(null) }
     var isImporting by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(true) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -46,41 +48,57 @@ fun WhatsAppIntegrationScreen(
                     }
                 },
                 actions = {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                // Inject JS to grab visible chat text
-                                webView?.evaluateJavascript(
-                                    "(function() { " +
-                                    "  const messages = Array.from(document.querySelectorAll('.message-in, .message-out'))" +
-                                    "    .map(m => m.innerText)" +
-                                    "    .join('\\n'); " +
-                                    "  return messages; " +
-                                    "})();"
-                                ) { result ->
-                                    if (!result.isNullOrBlank() && result != "null" && result != "\"\"") {
-                                        val cleaned = try {
-                                            JSONObject("{ \"text\": $result }").getString("text")
-                                        } catch (e: Exception) {
-                                            result.trim().removePrefix("\"").removeSuffix("\"")
-                                        }
-                                        extractedText = cleaned
-                                    }
+                    if (BuildConfig.GEMINI_API_KEY.isBlank() || BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY") {
+                        TextButton(onClick = { /* Could show info */ }) {
+                            Text("Missing AI Key", color = MaterialTheme.colorScheme.error)
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                scope.launch {
                                     isImporting = true
+                                    isLoading = true
+                                    // Inject JS to grab visible chat text and try to find active contact name
+                                    webView?.evaluateJavascript(
+                                        "(function() { " +
+                                        "  const messages = Array.from(document.querySelectorAll('.message-in, .message-out'))" +
+                                        "    .map(m => m.innerText)" +
+                                        "    .join('\\n'); " +
+                                        "  const activeContact = document.querySelector('._amig')?.innerText || 'Unknown'; " +
+                                        "  return JSON.stringify({ messages: messages, contact: activeContact }); " +
+                                        "})();"
+                                    ) { result ->
+                                        try {
+                                            val json = JSONObject(result.removePrefix("\"").removeSuffix("\"").replace("\\\"", "\""))
+                                            val text = json.optString("messages")
+                                            val contact = json.optString("contact")
+                                            
+                                            if (text.isNotBlank()) {
+                                                extractedText = "Contact: $contact\n\n$text"
+                                            }
+                                        } catch (e: Exception) {
+                                            extractedText = result.trim().removePrefix("\"").removeSuffix("\"")
+                                        }
+                                        isLoading = false
+                                    }
                                 }
-                            }
-                        },
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null)
-                        Spacer(Modifier.width(4.dp))
-                        Text("Smart Import")
+                            },
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Auto-Scan Chat")
+                        }
                     }
                 }
             )
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            if (isLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+            
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -88,7 +106,7 @@ fun WhatsAppIntegrationScreen(
                     .padding(8.dp)
             ) {
                 Text(
-                    "💡 Log in to WhatsApp Web below. Copy any order message, then click 'Smart Import' to automatically record it.",
+                    "💡 Login to WhatsApp. Once logged in, open a chat and click 'Auto-Scan Chat' to automatically pull orders into the app.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
@@ -97,16 +115,36 @@ fun WhatsAppIntegrationScreen(
             AndroidView(
                 factory = { ctx ->
                     WebView(ctx).apply {
-                        webViewClient = WebViewClient()
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                super.onPageFinished(view, url)
+                                isLoading = false
+                            }
+
+                            override fun onReceivedError(
+                                view: WebView?,
+                                errorCode: Int,
+                                description: String?,
+                                failingUrl: String?
+                            ) {
+                                super.onReceivedError(view, errorCode, description, failingUrl)
+                                isLoading = false
+                            }
+                        }
                         settings.apply {
                             javaScriptEnabled = true
                             domStorageEnabled = true
                             databaseEnabled = true
                             loadWithOverviewMode = true
                             useWideViewPort = true
+                            setSupportZoom(true)
+                            builtInZoomControls = true
+                            displayZoomControls = false
+                            allowFileAccess = true
+                            allowContentAccess = true
                             
-                            // Essential for WhatsApp Web on mobile
-                            userAgentString = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+                            // Highly compatible Desktop UA to bypass mobile blocking
+                            userAgentString = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                         }
                         loadUrl("https://web.whatsapp.com")
                         webView = this
@@ -143,21 +181,37 @@ fun WhatsAppIntegrationScreen(
                     onClick = {
                         scope.launch {
                             isProcessing = true
-                            val jsonString = GeminiService.parseOrderFromText(pasteText, parsingConfig)
+                            val resultJson = GeminiService.extractBusinessInfo(pasteText, parsingConfig)
                             try {
-                                val json = JSONObject(jsonString)
-                                val customer = json.optString("customerName", "Unknown")
-                                val product = json.optString("productName", "Unknown")
-                                val qty = json.optInt("quantity", 1)
-                                val rev = json.optDouble("totalRevenue", 0.0)
-                                val status = json.optString("status", "Pending")
-                                val deliveryDate = json.optString("deliveryDate", "Tomorrow")
-                                val notes = json.optString("notes", "")
+                                val root = JSONObject(resultJson)
                                 
-                                onImportOrder(customer, product, qty, rev, 0.0, status, deliveryDate, notes)
+                                // Handle Orders
+                                val ordersArray = root.optJSONArray("orders")
+                                if (ordersArray != null) {
+                                    for (i in 0 until ordersArray.length()) {
+                                        val json = ordersArray.getJSONObject(i)
+                                        val customer = json.optString("customerName", "Unknown")
+                                        val product = json.optString("productName", "Unknown")
+                                        val qty = json.optInt("quantity", 1)
+                                        val rev = json.optDouble("totalRevenue", 0.0)
+                                        val status = json.optString("status", "Pending")
+                                        val deliveryDate = json.optString("deliveryDate", "Tomorrow")
+                                        val notes = json.optString("notes", "")
+                                        onImportOrder(customer, product, qty, rev, 0.0, status, deliveryDate, notes)
+                                    }
+                                }
+
+                                // Handle Insights
+                                val insights = root.optString("insights")
+                                if (insights.isNotBlank()) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("AI Insight: $insights", duration = SnackbarDuration.Long)
+                                    }
+                                }
+
                                 isImporting = false
                                 scope.launch {
-                                    snackbarHostState.showSnackbar("Order recorded for $customer")
+                                    snackbarHostState.showSnackbar("Extraction complete!")
                                 }
                             } catch (e: Exception) {
                                 // Handle error

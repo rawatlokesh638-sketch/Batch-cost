@@ -100,6 +100,8 @@ class MainActivity : ComponentActivity() {
                 var showMonetizationModal by remember { mutableStateOf(false) }
                 var showWhatsAppLink by remember { mutableStateOf(false) }
                 var showAIParsingConfig by remember { mutableStateOf(false) }
+                var showVisualScanner by remember { mutableStateOf(false) }
+                var showOrderLinkGen by remember { mutableStateOf(false) }
 
                 if (!isLoggedIn) {
                     com.example.ui.components.LoginSignupScreen(
@@ -182,9 +184,36 @@ class MainActivity : ComponentActivity() {
                                 currentConfig = config,
                                 onBack = { showAIParsingConfig = false },
                                 onSave = { newConfig ->
-                                    viewModel.updateAIParsingConfig(newConfig)
+                                    viewModel.saveAIParsingConfig(newConfig)
                                     showAIParsingConfig = false
                                 }
+                            )
+                        }
+                        showVisualScanner -> {
+                            val config by viewModel.aiParsingConfig.collectAsStateWithLifecycle()
+                            com.example.ui.screens.orders.VisualOrderScannerScreen(
+                                parsingConfig = config,
+                                onBack = { showVisualScanner = false },
+                                onImportOrders = { orders ->
+                                    orders.forEach { order ->
+                                        viewModel.recordNewOrder(
+                                            order.customerName,
+                                            order.productName,
+                                            order.quantity,
+                                            order.totalRevenue,
+                                            order.totalCost,
+                                            order.status,
+                                            order.deliveryDate
+                                        )
+                                    }
+                                    showVisualScanner = false
+                                }
+                            )
+                        }
+                        showOrderLinkGen -> {
+                            com.example.ui.screens.settings.OrderLinkGeneratorScreen(
+                                profile = activeProfile,
+                                onBack = { showOrderLinkGen = false }
                             )
                         }
                         else -> {
@@ -238,7 +267,9 @@ class MainActivity : ComponentActivity() {
                                                     onIncrementBatchCount = {
                                                         viewModel.incrementBatchCount()
                                                     },
-                                                    onOpenWhatsApp = { showWhatsAppLink = true }
+                                                    onOpenWhatsApp = { showWhatsAppLink = true },
+                                                    onOpenVisualScanner = { showVisualScanner = true },
+                                                    onOpenOrderLinkGen = { showOrderLinkGen = true }
                                                 )
                                             }
                                             1 -> ProductsScreen(

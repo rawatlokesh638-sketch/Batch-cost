@@ -23,9 +23,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.QrCode
@@ -87,7 +90,9 @@ fun DashboardScreen(
     onAddNewProduct: () -> Unit,
     onRecordNewOrder: (customerName: String, productName: String, qty: Int, revenue: Double, cost: Double, status: String, deliveryDate: String) -> Unit,
     onIncrementBatchCount: () -> Unit,
-    onOpenWhatsApp: () -> Unit
+    onOpenWhatsApp: () -> Unit,
+    onOpenVisualScanner: () -> Unit,
+    onOpenOrderLinkGen: () -> Unit
 ) {
     val currencySym = profile.currencySymbol
     val scope = rememberCoroutineScope()
@@ -161,6 +166,30 @@ fun DashboardScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+
+        if (com.example.BuildConfig.GEMINI_API_KEY.isBlank() || com.example.BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY") {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(
+                            "⚠️ AI Features Disabled",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "Please add your GEMINI_API_KEY in the Secrets panel in AI Studio to enable Smart Import and AI Assistant.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
             }
         }
 
@@ -265,6 +294,24 @@ fun DashboardScreen(
                             testTag = "action_quick_add_offline"
                         )
                     }
+                    item {
+                        QuickActionButton(
+                            label = "📸 Scan Handwritten Bill",
+                            icon = Icons.Default.CameraAlt,
+                            onClick = { onOpenVisualScanner() },
+                            testTag = "action_visual_scanner"
+                        )
+                    }
+
+                    item {
+                        QuickActionButton(
+                            label = "🔗 Share Order Link/QR",
+                            icon = Icons.Default.Link,
+                            onClick = { onOpenOrderLinkGen() },
+                            testTag = "action_order_link_gen"
+                        )
+                    }
+
                     item {
                         QuickActionButton(
                             label = "💬 Ask AI Business Assistant",

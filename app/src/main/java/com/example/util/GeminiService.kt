@@ -12,11 +12,51 @@ object GeminiService {
             modelName = "gemini-3.5-flash",
             apiKey = BuildConfig.GEMINI_API_KEY,
             generationConfig = generationConfig {
-                temperature = 0.7f
+                temperature = 0.4f
                 topK = 40
                 topP = 0.95f
             }
         )
+    }
+
+    suspend fun extractBusinessInfo(text: String, config: com.example.ui.AIParsingConfig): String = withContext(Dispatchers.IO) {
+        if (BuildConfig.GEMINI_API_KEY.isBlank() || BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY") {
+            return@withContext ""
+        }
+
+        val prompt = """
+            You are a Business Intelligence AI for a bakery. Scan the following WhatsApp chat text and extract ANY useful business information.
+            Look for:
+            1. New Orders (Product, Qty, Date, Customer)
+            2. Price Inquiries (What are they asking about?)
+            3. Customer Feedback or Complaints
+            4. Delivery Requests
+            
+            Business Context: ${config.customContext}
+            
+            Return a JSON object with this structure:
+            {
+              "orders": [ { "customerName": "...", "productName": "...", "quantity": 1, "totalRevenue": 0.0, "status": "New", "deliveryDate": "...", "notes": "..." } ],
+              "inquiries": [ { "customer": "...", "topic": "...", "details": "..." } ],
+              "insights": "Any general observations about what customers want right now"
+            }
+            
+            If multiple items are found, include them all. If none, return empty lists.
+            
+            Chat Text:
+            "$text"
+        """.trimIndent()
+
+        return@withContext try {
+            val response = model.generateContent(prompt)
+            val rawText = response.text ?: ""
+            rawText.trim()
+                .removePrefix("```json")
+                .removeSuffix("```")
+                .trim()
+        } catch (e: Exception) {
+            ""
+        }
     }
 
     suspend fun generateResponse(prompt: String, contextData: String): String = withContext(Dispatchers.IO) {
@@ -41,6 +81,50 @@ object GeminiService {
             response.text ?: "I'm sorry, I couldn't generate a response."
         } catch (e: Exception) {
             "Error: ${e.localizedMessage}. Please check your internet and API key."
+        }
+    }
+
+    suspend fun parseOrderFromImage(bitmap: android.graphics.Bitmap, config: com.example.ui.AIParsingConfig): String = withContext(Dispatchers.IO) {
+        if (BuildConfig.GEMINI_API_KEY.isBlank() || BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY") {
+            return@withContext ""
+        }
+
+        val prompt = """
+            You are an order extraction AI for a bakery. Look at this image of a handwritten bill or order note and extract the details.
+            Follow these rules for extraction:
+            1. Product Name: ${config.productNameRule}
+            2. Quantity: ${config.quantityRule}
+            3. Price/Revenue: ${config.priceRule}
+            
+            Business Context: ${config.customContext}
+            
+            Return ONLY a JSON array of objects (if multiple orders are present) or a single JSON object with these fields:
+            {
+              "customerName": "...",
+              "productName": "...",
+              "quantity": 1,
+              "totalRevenue": 0.0,
+              "deliveryDate": "...",
+              "status": "New",
+              "notes": "Handwritten bill scan"
+            }
+            If it's an array, return [ {...}, {...} ].
+            If any field is unknown, use null or default values.
+        """.trimIndent()
+
+        return@withContext try {
+            val content = com.google.ai.client.generativeai.type.content {
+                image(bitmap)
+                text(prompt)
+            }
+            val response = model.generateContent(content)
+            val rawText = response.text ?: ""
+            rawText.trim()
+                .removePrefix("```json")
+                .removeSuffix("```")
+                .trim()
+        } catch (e: Exception) {
+            ""
         }
     }
 

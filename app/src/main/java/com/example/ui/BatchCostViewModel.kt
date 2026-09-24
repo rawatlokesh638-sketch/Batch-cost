@@ -519,7 +519,7 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun updateAIParsingConfig(config: AIParsingConfig) {
+    fun saveAIParsingConfig(config: AIParsingConfig) {
         _aiParsingConfig.value = config
         syncDataToFirebase()
     }
