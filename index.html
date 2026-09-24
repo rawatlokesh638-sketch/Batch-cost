@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BatchCost Pro - Download Android App (APK)</title>
+  <meta name="description" content="Download BatchCost Pro APK - Smart Bakery & Order Management app powered by Gemini AI. Scan handwritten bills, auto-import WhatsApp orders, and calculate profit margins.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-light: #eef2ff;
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --dark: #0f172a;
+      --dark-card: #1e293b;
+      --text: #334155;
+      --text-light: #64748b;
+      --bg: #f8fafc;
+      --white: #ffffff;
+      --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 25px 50px -12px rgba(79, 70, 229, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Top Sticky Navigation Bar */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      background: rgba(255, 255, 255, 0.9);
+      border-bottom: 1px solid #e2e8f0;
+      padding: 14px 24px;
+    }
+
+    .nav-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, #4f46e5, #06b6d4);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 22px;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+
+    .brand-name {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--dark);
+      letter-spacing: -0.5px;
+    }
+
+    .brand-name span {
+      color: var(--primary);
+    }
+
+    .btn-top-install {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-top-install:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 60px 24px 40px;
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      border: 1px solid rgba(79, 70, 229, 0.15);
+    }
+
+    .hero h1 {
+      font-size: clamp(32px, 6vw, 54px);
+      font-weight: 800;
+      color: var(--dark);
+      line-height: 1.15;
+      letter-spacing: -1.5px;
+      margin-bottom: 18px;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(135deg, #4f46e5, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: clamp(16px, 2.5vw, 20px);
+      color: var(--text-light);
+      max-width: 680px;
+      margin: 0 auto 36px;
+    }
+
+    /* Big Install Button Box */
+    .install-box {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 24px;
+      padding: 32px 24px;
+      box-shadow: var(--shadow);
+      max-width: 580px;
+      margin: 0 auto 48px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .install-box::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, #4f46e5, #06b6d4, #10b981);
+    }
+
+    .btn-main-install {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      background: linear-gradient(135deg, #4f46e5, #3730a3);
+      color: white;
+      text-decoration: none;
+      padding: 18px 28px;
+      border-radius: 16px;
+      font-size: 20px;
+      font-weight: 800;
+      box-shadow: var(--shadow-lg);
+      transition: all 0.25s ease;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-main-install:hover {
+      transform: translateY(-3px) scale(1.01);
+      box-shadow: 0 30px 60px -12px rgba(79, 70, 229, 0.4);
+    }
+
+    .btn-main-install svg {
+      width: 28px;
+      height: 28px;
+      fill: currentColor;
+    }
+
+    .download-meta {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 18px;
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--text-light);
+      font-weight: 600;
+      flex-wrap: wrap;
+    }
+
+    .download-meta span {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Notification Alert Box on Click */
+    .download-status {
+      display: none;
+      margin-top: 18px;
+      padding: 14px 18px;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 12px;
+      color: #065f46;
+      font-size: 14px;
+      font-weight: 600;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Features Grid */
+    .features {
+      max-width: 1100px;
+      margin: 20px auto 60px;
+      padding: 0 24px;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--dark);
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    .section-subtitle {
+      text-align: center;
+      color: var(--text-light);
+      margin-bottom: 40px;
+      font-size: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 28px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow);
+      border-color: #cbd5e1;
+    }
+
+    .card-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      margin-bottom: 18px;
+    }
+
+    .icon-cam { background: #fee2e2; }
+    .icon-wa { background: #dcfce7; }
+    .icon-qr { background: #e0e7ff; }
+    .icon-cost { background: #fef3c7; }
+
+    .card h3 {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 10px;
+    }
+
+    .card p {
+      font-size: 14px;
+      color: var(--text-light);
+      line-height: 1.6;
+    }
+
+    /* How to Install Steps */
+    .steps-section {
+      background: white;
+      border-top: 1px solid #e2e8f0;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 60px 24px;
+    }
+
+    .steps-container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 36px;
+    }
+
+    .step-item {
+      background: var(--bg);
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 24px 20px;
+      text-align: center;
+    }
+
+    .step-num {
+      width: 38px;
+      height: 38px;
+      background: var(--primary);
+      color: white;
+      font-weight: 800;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+      font-size: 16px;
+    }
+
+    .step-item h4 {
+      font-size: 16px;
+      color: var(--dark);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .step-item p {
+      font-size: 13px;
+      color: var(--text-light);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 40px 24px;
+      color: var(--text-light);
+      font-size: 14px;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    @media (max-width: 600px) {
+      header { padding: 12px 16px; }
+      .hero { padding: 40px 16px 20px; }
+      .install-box { padding: 24px 16px; }
+      .btn-main-install { font-size: 18px; padding: 16px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header>
+    <div class="nav-container">
+      <a href="#" class="brand">
+        <div class="brand-logo">🎂</div>
+        <div class="brand-name">Batch<span>Cost</span> Pro</div>
+      </a>
+      <button class="btn-top-install" onclick="triggerDownload()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+        Install APK
+      </button>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="hero">
+    <div class="badge-pill">
+      ✨ Powered by Gemini 3.8 Flash AI
+    </div>
+    <h1>Manage Bakery Orders, Recipes & Costs <span>All in One App</span></h1>
+    <p>Smart offline diary bill scanning, automatic WhatsApp order capture, and instant profit margin calculations for your business.</p>
+
+    <!-- Main Install Box -->
+    <div class="install-box">
+      <button id="mainDownloadBtn" class="btn-main-install" onclick="triggerDownload()">
+        <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+        Download & Install APK
+      </button>
+      <div class="download-meta">
+        <span>📦 Version: 1.0 (Latest)</span>
+        <span>🤖 Android 8.0+</span>
+        <span>🔒 100% Verified Safe</span>
+      </div>
+
+      <div id="downloadNotice" class="download-status">
+        ✅ Downloading started! Check your notification bar. Once finished, tap the downloaded file to install.
+      </div>
+    </div>
+  </main>
+
+  <!-- Key Features -->
+  <section class="features">
+    <h2 class="section-title">Everything You Need To Grow</h2>
+    <p class="section-subtitle">Specially built for bakeries, home bakers & food entrepreneurs.</p>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-icon icon-cam">📸</div>
+        <h3>Handwritten Bill Scanner</h3>
+        <p>Take a photo of your diary bill or paper note. Gemini AI automatically reads your handwriting and extracts customers, products, and quantities into your app.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon icon-wa">💬</div>
+        <h3>WhatsApp Auto-Scan</h3>
+        <p>Login to WhatsApp Web inside the app. Open any customer chat and click "Auto-Scan" to instantly record pending orders and price inquiries.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon icon-qr">🔗</div>
+        <h3>Order Link & Shop QR Code</h3>
+        <p>Generate a direct WhatsApp order link and print a personalized QR code for your shop counter so customers send formatted orders with one click.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon icon-cost">📊</div>
+        <h3>Recipe & Margin Costing</h3>
+        <p>Calculate exact ingredient costs per batch or per piece. Know your net profit and margin before delivering any cake or order.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How to Install Steps -->
+  <section class="steps-section">
+    <div class="steps-container">
+      <h2 class="section-title">How to Install on Android</h2>
+      <p class="section-subtitle">Quick 30-second installation guide</p>
+
+      <div class="steps-grid">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <h4>Download APK</h4>
+          <p>Tap the green <strong>"Install APK"</strong> button above to download the latest APK file.</p>
+        </div>
+
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <h4>Allow Download</h4>
+          <p>If Chrome asks "File might be harmful", tap <strong>Download anyway</strong>.</p>
+        </div>
+
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <h4>Tap to Install</h4>
+          <p>Open the downloaded <strong>app-debug.apk</strong> file and tap <strong>Install</strong>.</p>
+        </div>
+
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <h4>Open & Enjoy!</h4>
+          <p>Launch <strong>BatchCost</strong> and start capturing orders like a pro!</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>© 2026 BatchCost Pro. Built with ❤️ for Bakery Owners & Chefs.</p>
+    <p style="margin-top: 8px;">GitHub Repository: <a href="https://github.com/rawatlokesh638-sketch/Batch-cost" target="_blank">rawatlokesh638-sketch/Batch-cost</a></p>
+  </footer>
+
+  <script>
+    // Download logic
+    function triggerDownload() {
+      const notice = document.getElementById('downloadNotice');
+      if (notice) {
+        notice.style.display = 'block';
+      }
+
+      // Priority list of download URLs
+      // 1. Direct local file if deployed on same web root (app-debug.apk or BatchCost.apk)
+      // 2. Direct GitHub latest release download
+      const candidates = [
+        'BatchCost.apk',
+        'app-debug.apk',
+        'https://github.com/rawatlokesh638-sketch/Batch-cost/releases/latest/download/app-debug.apk',
+        'https://github.com/rawatlokesh638-sketch/Batch-cost/releases/latest/download/BatchCost.apk'
+      ];
+
+      // Initiate download
+      const link = document.createElement('a');
+      link.href = 'app-debug.apk';
+      link.setAttribute('download', 'BatchCost.apk');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Also try fetching latest release asset dynamically from GitHub if hosted elsewhere
+      fetch('https://api.github.com/repos/rawatlokesh638-sketch/Batch-cost/releases/latest')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.assets && data.assets.length > 0) {
+            const apkAsset = data.assets.find(a => a.name.endsWith('.apk'));
+            if (apkAsset && apkAsset.browser_download_url) {
+              const directBtn = document.getElementById('mainDownloadBtn');
+              if (directBtn) {
+                directBtn.onclick = function() {
+                  window.location.href = apkAsset.browser_download_url;
+                };
+              }
+            }
+          }
+        })
+        .catch(err => console.log('GitHub API offline check:', err));
+    }
+
+    // Auto trigger download if URL has ?download=true
+    if (window.location.search.includes('download=true')) {
+      window.onload = function() {
+        triggerDownload();
+      };
+    }
+  </script>
+</body>
+</html>

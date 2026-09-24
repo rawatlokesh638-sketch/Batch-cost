@@ -37,7 +37,9 @@ import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -96,6 +98,7 @@ fun DashboardScreen(
 ) {
     val currencySym = profile.currencySymbol
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     var showRecordOrderDialog by remember { mutableStateOf(false) }
     var showQuickOfflineOrderDialog by remember { mutableStateOf(false) }
@@ -130,7 +133,7 @@ fun DashboardScreen(
         if (products.isNotEmpty()) {
             val contextData = "Products: ${products.size}, Orders: ${recordedOrders.size}, Revenue: $orderRevenue, Profit: $displayProfit"
             val prompt = "Provide a one-line, inspiring, data-driven business insight for a bakery owner based on this: $contextData. Keep it short (max 15 words)."
-            smartInsight = com.example.util.GeminiService.generateResponse(prompt, contextData)
+            smartInsight = com.example.util.GeminiService.generateResponse(prompt, contextData, context)
         } else {
             smartInsight = "Add your first product to see smart AI business insights! 🚀"
         }
@@ -166,30 +169,6 @@ fun DashboardScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-        }
-
-        if (com.example.BuildConfig.GEMINI_API_KEY.isBlank() || com.example.BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY") {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(
-                            "⚠️ AI Features Disabled",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Please add your GEMINI_API_KEY in the Secrets panel in AI Studio to enable Smart Import and AI Assistant.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
             }
         }
 
@@ -868,6 +847,7 @@ fun QuickOfflineOrderDialog(
     onDismiss: () -> Unit,
     onImport: (customerName: String, productName: String, qty: Int, revenue: Double, cost: Double, status: String, deliveryDate: String) -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var noteText by remember { mutableStateOf("") }
     var isProcessing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -906,7 +886,7 @@ fun QuickOfflineOrderDialog(
                 onClick = {
                     scope.launch {
                         isProcessing = true
-                        val jsonString = GeminiService.parseOrderFromText(noteText, parsingConfig)
+                        val jsonString = GeminiService.parseOrderFromText(noteText, parsingConfig, context)
                         try {
                             val json = JSONObject(jsonString)
                             val customer = json.optString("customerName", "Offline Customer")

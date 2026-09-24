@@ -8,6 +8,8 @@ import com.example.data.local.entity.BusinessProfileEntity
 import com.example.data.local.entity.MasterIngredientEntity
 import com.example.data.local.entity.ProductEntity
 import com.example.data.local.entity.RecipeIngredientEntity
+import com.example.data.firebase.FirebaseSyncManager
+import com.example.data.firebase.CloudSyncStatus
 import com.example.util.CurrencyFormatter
 import com.example.util.UnitConverter
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,13 +81,13 @@ data class ProductWithDetails(
 
 data class SavedBatchRecord(
     val id: String = java.util.UUID.randomUUID().toString(),
-    val productName: String,
-    val date: String,
-    val unitsProduced: Int,
-    val totalCost: Double,
-    val costPerUnit: Double,
-    val sellingPricePerUnit: Double,
-    val estimatedProfit: Double,
+    val productName: String = "",
+    val date: String = "",
+    val unitsProduced: Int = 1,
+    val totalCost: Double = 0.0,
+    val costPerUnit: Double = 0.0,
+    val sellingPricePerUnit: Double = 0.0,
+    val estimatedProfit: Double = 0.0,
     val ingredientsSummary: String = "Wheat Flour, Sugar, Butter, Cocoa, Eggs",
     val notes: String = "Standard commercial batch"
 )
@@ -99,11 +101,11 @@ data class AIParsingConfig(
 
 data class RecordedOrder(
     val id: String = java.util.UUID.randomUUID().toString(),
-    val customerName: String,
-    val productName: String,
-    val quantity: Int,
-    val totalRevenue: Double,
-    val totalCost: Double,
+    val customerName: String = "",
+    val productName: String = "",
+    val quantity: Int = 1,
+    val totalRevenue: Double = 0.0,
+    val totalCost: Double = 0.0,
     val deliveryFee: Double = 50.0,
     val platformFee: Double = 30.0,
     val paymentGatewayFee: Double = 12.0,
@@ -151,11 +153,16 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
     private val masterIngredientDao = db.masterIngredientDao()
     private val recipeIngredientDao = db.recipeIngredientDao()
 
-    private val rtdbRef = try {
-        com.google.firebase.database.FirebaseDatabase.getInstance().reference
-    } catch (e: Exception) {
-        null
-    }
+    val syncManager = FirebaseSyncManager(
+        profileDao = profileDao,
+        productDao = productDao,
+        masterIngredientDao = masterIngredientDao,
+        recipeIngredientDao = recipeIngredientDao,
+        scope = viewModelScope
+    )
+
+    val cloudSyncStatus: StateFlow<CloudSyncStatus> = syncManager.syncStatus
+    val lastCloudSyncTime: StateFlow<Long> = syncManager.lastSyncTimestamp
 
     val businessProfile: StateFlow<BusinessProfileEntity?> = profileDao.getBusinessProfile()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -455,68 +462,27 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
         loadDataFromFirebase()
     }
 
-    private fun loadDataFromFirebase() {
-        val uid = try {
-            com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
-        } catch (e: Exception) {
-            null
-        } ?: return
-
-        val ref = rtdbRef?.child("users")?.child(uid) ?: return
-
-        ref.get().addOnSuccessListener { snapshot ->
-            if (snapshot.exists()) {
-                viewModelScope.launch {
-                    try {
-                        // We don't overwrite Room if Room is not empty (simple conflict resolution)
-                        // But we update the non-Room flows
-                        val orders = snapshot.child("orders").children.mapNotNull { it.getValue(RecordedOrder::class.java) }
-                        val batches = snapshot.child("batches").children.mapNotNull { it.getValue(SavedBatchRecord::class.java) }
-                        val aliases = snapshot.child("productAliases").getValue(object : com.google.firebase.database.GenericTypeIndicator<Map<String, String>>() {}) ?: emptyMap()
-                        val count = snapshot.child("batchCount").getValue(Int::class.java) ?: 0
-                        val config = snapshot.child("aiParsingConfig").getValue(AIParsingConfig::class.java) ?: AIParsingConfig()
-
-                        if (orders.isNotEmpty()) _recordedOrders.value = orders
-                        if (batches.isNotEmpty()) _savedBatches.value = batches
-                        if (aliases.isNotEmpty()) _productAliases.value = aliases
-                        _batchCount.value = count
-                        _aiParsingConfig.value = config
-                    } catch (e: Exception) {
-                        // Handle parse error
-                    }
-                }
-            }
+    fun loadDataFromFirebase() {
+        viewModelScope.launch {
+            syncManager.loadFromCloud(
+                onOrdersLoaded = { orders -> _recordedOrders.value = orders },
+                onBatchesLoaded = { batches -> _savedBatches.value = batches },
+                onAliasesLoaded = { aliases -> _productAliases.value = aliases },
+                onBatchCountLoaded = { count -> _batchCount.value = count },
+                onConfigLoaded = { cfg -> _aiParsingConfig.value = cfg }
+            )
         }
     }
 
-    private fun syncDataToFirebase() {
-        val uid = try {
-            com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
-        } catch (e: Exception) {
-            null
-        } ?: return
-        
-        val ref = rtdbRef?.child("users")?.child(uid) ?: return
-
-        viewModelScope.launch {
-            val profile = profileDao.getBusinessProfileOnce()
-            val products = productDao.getAllProductsSync()
-            val ingredients = recipeIngredientDao.getAllRecipeIngredientsSync()
-            val masterIngs = masterIngredientDao.getAllMasterIngredientsSync()
-
-            val data = mapOf(
-                "profile" to profile,
-                "products" to products,
-                "recipeIngredients" to ingredients,
-                "masterIngredients" to masterIngs,
-                "orders" to _recordedOrders.value,
-                "batches" to _savedBatches.value,
-                "batchCount" to _batchCount.value,
-                "productAliases" to _productAliases.value,
-                "aiParsingConfig" to _aiParsingConfig.value
-            )
-            ref.setValue(data)
-        }
+    fun syncDataToFirebase(onComplete: ((Boolean) -> Unit)? = null) {
+        syncManager.syncAllToCloud(
+            orders = _recordedOrders.value,
+            batches = _savedBatches.value,
+            aliases = _productAliases.value,
+            batchCount = _batchCount.value,
+            parsingConfig = _aiParsingConfig.value,
+            onComplete = onComplete
+        )
     }
 
     fun saveAIParsingConfig(config: AIParsingConfig) {

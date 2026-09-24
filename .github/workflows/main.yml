@@ -1,10 +1,19 @@
-name: Build BatchCost APK
+name: Build & Deploy BatchCost APK
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -35,9 +44,36 @@ jobs:
       - name: Build Debug APK
         run: gradle assembleDebug --stacktrace
 
-      # 7. Upload APK
+      # 6. Upload APK Artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: BatchCost-Debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      # 7. Prepare GitHub Pages site with APK
+      - name: Prepare Website & APK
+        run: |
+          mkdir -p site
+          cp index.html site/index.html
+          if [ -d public ]; then cp -r public/* site/ 2>/dev/null || true; fi
+          cp app/build/outputs/apk/debug/app-debug.apk site/app-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk site/BatchCost.apk
+
+      # 8. Upload Pages Artifact
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

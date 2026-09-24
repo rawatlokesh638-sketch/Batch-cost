@@ -6,11 +6,11 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "business_profile")
 data class BusinessProfileEntity(
     @PrimaryKey val id: Int = 1,
-    val businessName: String,
-    val ownerName: String,
-    val phone: String,
+    val businessName: String = "",
+    val ownerName: String = "",
+    val phone: String = "",
     val email: String? = null,
-    val businessType: String,
+    val businessType: String = "Bakery",
     val customBusinessType: String? = null,
     val currencySymbol: String = "₹",
     val currencyCode: String = "INR",

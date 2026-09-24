@@ -104,7 +104,7 @@ fun VisualOrderScannerScreen(
                     onClick = {
                         scope.launch {
                             isProcessing = true
-                            val result = GeminiService.parseOrderFromImage(capturedBitmap!!, parsingConfig)
+                            val result = GeminiService.parseOrderFromImage(capturedBitmap!!, parsingConfig, context)
                             try {
                                 val orders = mutableListOf<com.example.ui.RecordedOrder>()
                                 if (result.startsWith("[")) {

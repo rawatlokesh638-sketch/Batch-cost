@@ -6,8 +6,8 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "products")
 data class ProductEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String,
-    val sellingPrice: Double,
+    val name: String = "",
+    val sellingPrice: Double = 0.0,
     val unit: String = "Piece",
     val sku: String? = null,
     val category: String? = null,

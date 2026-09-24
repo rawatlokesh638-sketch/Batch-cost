@@ -1,0 +1,171 @@
+{
+  "users": {
+    "default_user_sample": {
+      "profile": {
+        "id": 1,
+        "businessName": "Sweet Delights Bakery",
+        "ownerName": "Lokesh Rawat",
+        "phone": "+91 9876543210",
+        "email": "rawatlokesh638@gmail.com",
+        "businessType": "Home Bakery & Pastry Shop",
+        "currencySymbol": "₹",
+        "currencyCode": "INR",
+        "logoIdentifier": "bakery",
+        "address": "Shop 4, Market Complex, Delhi",
+        "isOnboardingCompleted": true
+      },
+      "products": [
+        {
+          "id": 1,
+          "name": "Dutch Truffle Cake (1kg)",
+          "sellingPrice": 650.0,
+          "unit": "Piece",
+          "sku": "CAKE-TRF-1K",
+          "category": "Cakes",
+          "description": "Rich dark chocolate ganache cake",
+          "weight": "1000g",
+          "packagingCost": 35.0,
+          "labourCost": 50.0,
+          "electricityGasCost": 20.0,
+          "otherOverhead": 15.0,
+          "wastagePercent": 5.0,
+          "createdAt": 1727100000000
+        },
+        {
+          "id": 2,
+          "name": "Red Velvet Cupcake",
+          "sellingPrice": 70.0,
+          "unit": "Piece",
+          "sku": "CUP-RV-01",
+          "category": "Cupcakes",
+          "description": "Cream cheese frosted velvet cupcake",
+          "weight": "80g",
+          "packagingCost": 5.0,
+          "labourCost": 10.0,
+          "electricityGasCost": 5.0,
+          "otherOverhead": 2.0,
+          "wastagePercent": 3.0,
+          "createdAt": 1727100000000
+        }
+      ],
+      "recipeIngredients": [
+        {
+          "id": 1,
+          "productId": 1,
+          "ingredientName": "All Purpose Flour (Maida)",
+          "purchaseQty": 1.0,
+          "purchaseUnit": "kg",
+          "purchasePrice": 45.0,
+          "usedQty": 250.0,
+          "usedUnit": "g"
+        },
+        {
+          "id": 2,
+          "productId": 1,
+          "ingredientName": "Dark Chocolate Compound",
+          "purchaseQty": 500.0,
+          "purchaseUnit": "g",
+          "purchasePrice": 180.0,
+          "usedQty": 300.0,
+          "usedUnit": "g"
+        },
+        {
+          "id": 3,
+          "productId": 1,
+          "ingredientName": "Amul Butter",
+          "purchaseQty": 500.0,
+          "purchaseUnit": "g",
+          "purchasePrice": 275.0,
+          "usedQty": 150.0,
+          "usedUnit": "g"
+        }
+      ],
+      "masterIngredients": [
+        {
+          "id": 1,
+          "name": "All Purpose Flour (Maida)",
+          "purchaseQty": 10.0,
+          "purchaseUnit": "kg",
+          "purchasePrice": 420.0,
+          "category": "Flours",
+          "supplier": "Metro Wholesale",
+          "minimumStock": 5.0,
+          "currentStock": 18.5,
+          "expiryDate": "2026-12-31",
+          "lastUpdated": 1727100000000
+        },
+        {
+          "id": 2,
+          "name": "Dark Chocolate Compound",
+          "purchaseQty": 5.0,
+          "purchaseUnit": "kg",
+          "purchasePrice": 1600.0,
+          "category": "Chocolates",
+          "supplier": "Bakers Mart",
+          "minimumStock": 2.0,
+          "currentStock": 6.0,
+          "expiryDate": "2026-10-15",
+          "lastUpdated": 1727100000000
+        },
+        {
+          "id": 3,
+          "name": "Amul Butter Unsalted",
+          "purchaseQty": 5.0,
+          "purchaseUnit": "kg",
+          "purchasePrice": 2600.0,
+          "category": "Dairy",
+          "supplier": "Dairy Direct",
+          "minimumStock": 3.0,
+          "currentStock": 7.5,
+          "expiryDate": "2026-11-20",
+          "lastUpdated": 1727100000000
+        }
+      ],
+      "orders": [
+        {
+          "id": "ord-sample-101",
+          "customerName": "Pooja Sharma",
+          "productName": "Dutch Truffle Cake (1kg)",
+          "quantity": 1,
+          "totalRevenue": 650.0,
+          "totalCost": 280.0,
+          "deliveryFee": 50.0,
+          "platformFee": 0.0,
+          "paymentGatewayFee": 10.0,
+          "marketingFee": 0.0,
+          "status": "Confirmed",
+          "deliveryDate": "Tomorrow 5:00 PM",
+          "date": "Today"
+        }
+      ],
+      "batches": [
+        {
+          "id": "batch-sample-01",
+          "productName": "Dutch Truffle Cake (1kg)",
+          "date": "2026-09-24",
+          "unitsProduced": 2,
+          "totalCost": 560.0,
+          "costPerUnit": 280.0,
+          "sellingPricePerUnit": 650.0,
+          "estimatedProfit": 740.0,
+          "ingredientsSummary": "Maida 500g, Dark Chocolate 600g, Butter 300g",
+          "notes": "Standard morning production batch"
+        }
+      ],
+      "batchCount": 1,
+      "productAliases": {
+        "dt": "Dutch Truffle Cake (1kg)",
+        "truffle": "Dutch Truffle Cake (1kg)",
+        "rv": "Red Velvet Cupcake",
+        "cupcake": "Red Velvet Cupcake"
+      },
+      "aiParsingConfig": {
+        "productNameRule": "Look for cake, pastry, or bakery product item mentioned.",
+        "quantityRule": "Extract number of pieces, kg, or weight.",
+        "priceRule": "Identify total payment or price per item.",
+        "customContext": "Bakery business in India using INR ₹."
+      },
+      "lastSync": 1727100000000
+    }
+  }
+}

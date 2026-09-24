@@ -15,7 +15,7 @@ android {
   namespace = "com.example"
 
   defaultConfig {
-    applicationId = "com.aistudio.batchcost.app"
+    applicationId = "com.batchcost.bakerypro"
     minSdk = 24
     targetSdk = 35
     versionCode = 1
@@ -107,6 +107,7 @@ dependencies {
   implementation(libs.converter.moshi)
   implementation(libs.google.generativeai)
   implementation(libs.firebase.database)
+  implementation(libs.firebase.firestore)
   implementation(libs.firebase.auth)
   implementation(libs.kotlinx.serialization.json)
   // implementation(libs.androidx.credentials)

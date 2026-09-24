@@ -71,6 +71,7 @@ fun AIBusinessAssistantSheet(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = androidx.compose.ui.platform.LocalContext.current
     var inputQuery by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
@@ -110,7 +111,7 @@ fun AIBusinessAssistantSheet(
                 put("products", productList)
             }.toString()
 
-            val response = GeminiService.generateResponse(query, contextData)
+            val response = GeminiService.generateResponse(query, contextData, context)
             
             // Remove loading and add real response
             messages.remove(loadingMsg)

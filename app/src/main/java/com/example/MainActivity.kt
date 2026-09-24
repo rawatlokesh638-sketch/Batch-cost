@@ -40,6 +40,17 @@ import com.example.ui.screens.products.ProductDetailScreen
 import com.example.ui.screens.products.ProductsScreen
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Style
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import com.example.ui.screens.label.LabelGeneratorScreen
 import com.example.ui.screens.orders.OrdersScreen
 import com.example.ui.theme.BatchCostTheme
@@ -52,6 +63,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
+            com.example.util.GeminiService.init(this)
             com.google.firebase.FirebaseApp.initializeApp(this)
             val firebaseAppCheck = com.google.firebase.appcheck.FirebaseAppCheck.getInstance()
             firebaseAppCheck.installAppCheckProviderFactory(
@@ -102,6 +114,9 @@ class MainActivity : ComponentActivity() {
                 var showAIParsingConfig by remember { mutableStateOf(false) }
                 var showVisualScanner by remember { mutableStateOf(false) }
                 var showOrderLinkGen by remember { mutableStateOf(false) }
+                val snackbarHostState = remember { SnackbarHostState() }
+                val scope = rememberCoroutineScope()
+                val cloudSyncStatus by viewModel.cloudSyncStatus.collectAsStateWithLifecycle()
 
                 if (!isLoggedIn) {
                     com.example.ui.components.LoginSignupScreen(
@@ -218,10 +233,37 @@ class MainActivity : ComponentActivity() {
                         }
                         else -> {
                             androidx.compose.material3.Scaffold(
+                                snackbarHost = { SnackbarHost(snackbarHostState) },
                                 topBar = {
                                     androidx.compose.material3.TopAppBar(
                                         title = { Text(activeProfile.businessName.ifBlank { "Bakery Cost & Profit Pro" }, fontWeight = FontWeight.Bold) },
                                         actions = {
+                                            IconButton(
+                                                onClick = {
+                                                    scope.launch {
+                                                        snackbarHostState.showSnackbar("Syncing to Firebase Cloud...")
+                                                        viewModel.syncDataToFirebase { ok ->
+                                                            scope.launch {
+                                                                if (ok) snackbarHostState.showSnackbar("☁️ Firebase Cloud Sync Complete!")
+                                                                else snackbarHostState.showSnackbar("⚠️ Cloud sync error. Saved locally.")
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ) {
+                                                when (cloudSyncStatus) {
+                                                    com.example.data.firebase.CloudSyncStatus.SYNCING -> {
+                                                        CircularProgressIndicator(modifier = Modifier.padding(6.dp), strokeWidth = 2.dp)
+                                                    }
+                                                    com.example.data.firebase.CloudSyncStatus.ERROR -> {
+                                                        Icon(Icons.Default.CloudOff, contentDescription = "Sync Error", tint = MaterialTheme.colorScheme.error)
+                                                    }
+                                                    else -> {
+                                                        Icon(Icons.Default.CloudDone, contentDescription = "Cloud Synced", tint = MaterialTheme.colorScheme.primary)
+                                                    }
+                                                }
+                                            }
+
                                             com.example.ui.components.TopOverflowMenu(
                                                 onSelectTab = { viewModel.selectTab(it) },
                                                 onOpenPriceList = { showPriceListModal = true },
@@ -233,7 +275,18 @@ class MainActivity : ComponentActivity() {
                                                 onOpenAiAssistant = { showAiAssistantSheet = true },
                                                 onOpenMonetization = { showMonetizationModal = true },
                                                 onOpenWhatsAppLink = { showWhatsAppLink = true },
-                                                onOpenAIParsingConfig = { showAIParsingConfig = true }
+                                                onOpenAIParsingConfig = { showAIParsingConfig = true },
+                                                onManualSync = {
+                                                    scope.launch {
+                                                        snackbarHostState.showSnackbar("Syncing to Firebase Cloud...")
+                                                        viewModel.syncDataToFirebase { ok ->
+                                                            scope.launch {
+                                                                if (ok) snackbarHostState.showSnackbar("☁️ All business data synced to Firebase!")
+                                                                else snackbarHostState.showSnackbar("⚠️ Cloud sync error. Saved locally.")
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             )
                                         }
                                     )
@@ -366,7 +419,11 @@ class MainActivity : ComponentActivity() {
                                 com.example.ui.components.FirebaseAuthDialog(
                                     currentUserEmail = activeProfile.email ?: "",
                                     onDismiss = { showAuthModal = false },
-                                    onLoginSuccess = { email -> showAuthModal = false }
+                                    onLoginSuccess = { email -> 
+                                        showAuthModal = false
+                                        viewModel.loadDataFromFirebase()
+                                        viewModel.syncDataToFirebase()
+                                    }
                                 )
                             }
                             if (showAiAssistantSheet) {

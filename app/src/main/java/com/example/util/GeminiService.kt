@@ -1,5 +1,6 @@
 package com.example.util
 
+import android.content.Context
 import com.example.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.generationConfig
@@ -7,10 +8,46 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 object GeminiService {
-    private val model38 by lazy {
-        GenerativeModel(
+    private var inMemoryApiKey: String = ""
+
+    fun init(context: Context) {
+        val prefs = context.getSharedPreferences("gemini_prefs", Context.MODE_PRIVATE)
+        inMemoryApiKey = prefs.getString("custom_gemini_api_key", "") ?: ""
+    }
+
+    fun getEffectiveApiKey(context: Context? = null): String {
+        if (inMemoryApiKey.isNotBlank()) {
+            return inMemoryApiKey.trim()
+        }
+        if (context != null) {
+            val prefs = context.getSharedPreferences("gemini_prefs", Context.MODE_PRIVATE)
+            val savedKey = prefs.getString("custom_gemini_api_key", "") ?: ""
+            if (savedKey.isNotBlank()) {
+                inMemoryApiKey = savedKey.trim()
+                return inMemoryApiKey
+            }
+        }
+        val buildKey = BuildConfig.GEMINI_API_KEY
+        if (buildKey.isNotBlank() && buildKey != "MY_GEMINI_API_KEY") {
+            return buildKey.trim()
+        }
+        return ""
+    }
+
+    fun isKeyConfigured(context: Context? = null): Boolean {
+        return getEffectiveApiKey(context).isNotBlank()
+    }
+
+    fun setCustomApiKey(context: Context, key: String) {
+        inMemoryApiKey = key.trim()
+        val prefs = context.getSharedPreferences("gemini_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("custom_gemini_api_key", inMemoryApiKey).apply()
+    }
+
+    private fun getModel38(apiKey: String): GenerativeModel {
+        return GenerativeModel(
             modelName = "gemini-3.8-flash",
-            apiKey = BuildConfig.GEMINI_API_KEY,
+            apiKey = apiKey,
             generationConfig = generationConfig {
                 temperature = 0.4f
                 topK = 40
@@ -19,10 +56,10 @@ object GeminiService {
         )
     }
 
-    private val modelFallback by lazy {
-        GenerativeModel(
+    private fun getModelFallback(apiKey: String): GenerativeModel {
+        return GenerativeModel(
             modelName = "gemini-1.5-flash",
-            apiKey = BuildConfig.GEMINI_API_KEY,
+            apiKey = apiKey,
             generationConfig = generationConfig {
                 temperature = 0.4f
                 topK = 40
@@ -31,13 +68,13 @@ object GeminiService {
         )
     }
 
-    private suspend fun generateContentSafe(prompt: String): String {
+    private suspend fun generateContentSafe(prompt: String, apiKey: String): String {
         return try {
-            val res = model38.generateContent(prompt)
+            val res = getModel38(apiKey).generateContent(prompt)
             res.text ?: ""
         } catch (e: Exception) {
             try {
-                val resFallback = modelFallback.generateContent(prompt)
+                val resFallback = getModelFallback(apiKey).generateContent(prompt)
                 resFallback.text ?: ""
             } catch (e2: Exception) {
                 throw e2
@@ -45,13 +82,13 @@ object GeminiService {
         }
     }
 
-    private suspend fun generateContentSafe(content: com.google.ai.client.generativeai.type.Content): String {
+    private suspend fun generateContentSafe(content: com.google.ai.client.generativeai.type.Content, apiKey: String): String {
         return try {
-            val res = model38.generateContent(content)
+            val res = getModel38(apiKey).generateContent(content)
             res.text ?: ""
         } catch (e: Exception) {
             try {
-                val resFallback = modelFallback.generateContent(content)
+                val resFallback = getModelFallback(apiKey).generateContent(content)
                 resFallback.text ?: ""
             } catch (e2: Exception) {
                 throw e2
@@ -59,8 +96,9 @@ object GeminiService {
         }
     }
 
-    suspend fun extractBusinessInfo(text: String, config: com.example.ui.AIParsingConfig): String = withContext(Dispatchers.IO) {
-        if (BuildConfig.GEMINI_API_KEY.isBlank() || BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY") {
+    suspend fun extractBusinessInfo(text: String, config: com.example.ui.AIParsingConfig, context: Context? = null): String = withContext(Dispatchers.IO) {
+        val apiKey = getEffectiveApiKey(context)
+        if (apiKey.isBlank()) {
             return@withContext ""
         }
 
@@ -88,7 +126,7 @@ object GeminiService {
         """.trimIndent()
 
         return@withContext try {
-            val rawText = generateContentSafe(prompt)
+            val rawText = generateContentSafe(prompt, apiKey)
             rawText.trim()
                 .removePrefix("```json")
                 .removeSuffix("```")
@@ -98,9 +136,10 @@ object GeminiService {
         }
     }
 
-    suspend fun generateResponse(prompt: String, contextData: String): String = withContext(Dispatchers.IO) {
-        if (BuildConfig.GEMINI_API_KEY.isBlank() || BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY") {
-            return@withContext "AI Assistant is not fully configured. Please ensure your GEMINI_API_KEY is set in the Secrets panel."
+    suspend fun generateResponse(prompt: String, contextData: String, context: Context? = null): String = withContext(Dispatchers.IO) {
+        val apiKey = getEffectiveApiKey(context)
+        if (apiKey.isBlank()) {
+            return@withContext "AI Business Assistant is initializing. Please try again in a moment."
         }
 
         val fullPrompt = """
@@ -116,15 +155,16 @@ object GeminiService {
         """.trimIndent()
 
         return@withContext try {
-            val text = generateContentSafe(fullPrompt)
+            val text = generateContentSafe(fullPrompt, apiKey)
             text.ifBlank { "I'm sorry, I couldn't generate a response." }
         } catch (e: Exception) {
             "Error: ${e.localizedMessage}. Please check your internet and API key."
         }
     }
 
-    suspend fun parseOrderFromImage(bitmap: android.graphics.Bitmap, config: com.example.ui.AIParsingConfig): String = withContext(Dispatchers.IO) {
-        if (BuildConfig.GEMINI_API_KEY.isBlank() || BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY") {
+    suspend fun parseOrderFromImage(bitmap: android.graphics.Bitmap, config: com.example.ui.AIParsingConfig, context: Context? = null): String = withContext(Dispatchers.IO) {
+        val apiKey = getEffectiveApiKey(context)
+        if (apiKey.isBlank()) {
             return@withContext ""
         }
 
@@ -156,7 +196,7 @@ object GeminiService {
                 image(bitmap)
                 text(prompt)
             }
-            val rawText = generateContentSafe(content)
+            val rawText = generateContentSafe(content, apiKey)
             rawText.trim()
                 .removePrefix("```json")
                 .removeSuffix("```")
@@ -166,8 +206,9 @@ object GeminiService {
         }
     }
 
-    suspend fun parseOrderFromText(text: String, config: com.example.ui.AIParsingConfig): String = withContext(Dispatchers.IO) {
-        if (BuildConfig.GEMINI_API_KEY.isBlank() || BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY") {
+    suspend fun parseOrderFromText(text: String, config: com.example.ui.AIParsingConfig, context: Context? = null): String = withContext(Dispatchers.IO) {
+        val apiKey = getEffectiveApiKey(context)
+        if (apiKey.isBlank()) {
             return@withContext ""
         }
 
@@ -197,7 +238,7 @@ object GeminiService {
         """.trimIndent()
 
         return@withContext try {
-            val rawText = generateContentSafe(prompt)
+            val rawText = generateContentSafe(prompt, apiKey)
             // Clean markdown if present
             rawText.trim()
                 .removePrefix("```json")

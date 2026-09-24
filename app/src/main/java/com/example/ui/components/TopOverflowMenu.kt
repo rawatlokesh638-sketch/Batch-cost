@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Inventory
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Lock
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -43,7 +45,8 @@ fun TopOverflowMenu(
     onOpenAiAssistant: () -> Unit,
     onOpenMonetization: () -> Unit,
     onOpenWhatsAppLink: () -> Unit,
-    onOpenAIParsingConfig: () -> Unit
+    onOpenAIParsingConfig: () -> Unit,
+    onManualSync: () -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -60,6 +63,11 @@ fun TopOverflowMenu(
             onDismissRequest = { expanded = false },
             modifier = Modifier.testTag("top_overflow_dropdown")
         ) {
+            DropdownMenuItem(
+                text = { Text("☁️ Cloud Sync (Firebase)") },
+                onClick = { expanded = false; onManualSync() },
+                leadingIcon = { Icon(Icons.Default.Sync, contentDescription = null) }
+            )
             DropdownMenuItem(
                 text = { Text("📊 Dashboard") },
                 onClick = { expanded = false; onSelectTab(0) },
