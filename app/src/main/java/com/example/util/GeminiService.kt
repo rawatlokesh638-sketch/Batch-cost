@@ -55,7 +55,7 @@ object GeminiService {
 
     private fun getModel38(apiKey: String): GenerativeModel {
         return GenerativeModel(
-            modelName = "gemini-2.5-flash",
+            modelName = "gemini-3.8-flash",
             apiKey = apiKey,
             generationConfig = generationConfig {
                 temperature = 0.2f
@@ -67,7 +67,7 @@ object GeminiService {
 
     private fun getModelFallback(apiKey: String): GenerativeModel {
         return GenerativeModel(
-            modelName = "gemini-2.0-flash",
+            modelName = "gemini-2.5-flash",
             apiKey = apiKey,
             generationConfig = generationConfig {
                 temperature = 0.2f
@@ -82,12 +82,12 @@ object GeminiService {
             val res = getModel38(apiKey).generateContent(prompt)
             res.text ?: ""
         } catch (e: Exception) {
-            Log.w(TAG, "gemini-3.8-flash failed, trying gemini-3.5-flash fallback: ${e.message}")
+            Log.w(TAG, "gemini-3.8-flash failed, trying fallback: ${e.message}")
             try {
                 val resFallback = getModelFallback(apiKey).generateContent(prompt)
                 resFallback.text ?: ""
             } catch (e2: Exception) {
-                Log.e(TAG, "Both Gemini models failed: ${e2.message}")
+                Log.e(TAG, "Gemini fallback also failed: ${e2.message}")
                 throw e2
             }
         }
@@ -98,7 +98,7 @@ object GeminiService {
             val res = getModel38(apiKey).generateContent(content)
             res.text ?: ""
         } catch (e: Exception) {
-            Log.w(TAG, "gemini-3.8-flash image failed, trying gemini-3.5-flash fallback: ${e.message}")
+            Log.w(TAG, "gemini-3.8-flash image failed, trying fallback: ${e.message}")
             try {
                 val resFallback = getModelFallback(apiKey).generateContent(content)
                 resFallback.text ?: ""
