@@ -104,14 +104,21 @@ data class RecordedOrder(
     val customerName: String = "",
     val productName: String = "",
     val quantity: Int = 1,
+    val weightOrSize: String = "1 kg",
+    val flavor: String = "Chocolate",
+    val isEggless: Boolean = false,
+    val customMessageOnCake: String = "",
     val totalRevenue: Double = 0.0,
     val totalCost: Double = 0.0,
     val deliveryFee: Double = 50.0,
     val platformFee: Double = 30.0,
     val paymentGatewayFee: Double = 12.0,
     val marketingFee: Double = 20.0,
-    val status: String = "New",
+    val status: String = "Confirmed",
     val deliveryDate: String = "Tomorrow",
+    val deliveryTimeSlot: String = "Evening",
+    val aiExplanation: String = "",
+    val rawWhatsAppText: String = "",
     val date: String = "Today"
 ) {
     val totalFees: Double get() = deliveryFee + platformFee + paymentGatewayFee + marketingFee
@@ -260,15 +267,37 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
         syncDataToFirebase()
     }
 
-    fun recordNewOrder(customerName: String, productName: String, qty: Int, revenue: Double, cost: Double, status: String = "Pending", deliveryDate: String = "Tomorrow") {
+    fun recordNewOrder(
+        customerName: String,
+        productName: String,
+        qty: Int,
+        revenue: Double,
+        cost: Double,
+        status: String = "Confirmed",
+        deliveryDate: String = "Tomorrow",
+        deliveryTimeSlot: String = "Evening",
+        weightOrSize: String = "1 kg",
+        flavor: String = "Chocolate",
+        isEggless: Boolean = false,
+        customMessageOnCake: String = "",
+        aiExplanation: String = "",
+        rawWhatsAppText: String = ""
+    ) {
         val newOrder = RecordedOrder(
             customerName = customerName,
             productName = productName,
             quantity = qty,
+            weightOrSize = weightOrSize,
+            flavor = flavor,
+            isEggless = isEggless,
+            customMessageOnCake = customMessageOnCake,
             totalRevenue = revenue,
             totalCost = cost,
             status = status,
             deliveryDate = deliveryDate,
+            deliveryTimeSlot = deliveryTimeSlot,
+            aiExplanation = aiExplanation,
+            rawWhatsAppText = rawWhatsAppText,
             date = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date())
         )
         _recordedOrders.update { listOf(newOrder) + it }
@@ -462,6 +491,14 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
 
     init {
         loadDataFromFirebase()
+        syncManager.startRealtimeListener(
+            onOrdersLoaded = { orders -> if (orders.isNotEmpty()) _recordedOrders.value = orders },
+            onBatchesLoaded = { batches -> if (batches.isNotEmpty()) _savedBatches.value = batches },
+            onAliasesLoaded = { aliases -> if (aliases.isNotEmpty()) _productAliases.value = aliases },
+            onBatchCountLoaded = { count -> if (count > 0) _batchCount.value = count },
+            onConfigLoaded = { cfg -> _aiParsingConfig.value = cfg }
+        )
+
         com.example.service.WhatsAppOrderCaptureHub.parsingConfig = _aiParsingConfig.value
         com.example.service.WhatsAppOrderCaptureHub.registerOrderRecordedListener { captured ->
             recordNewOrder(
@@ -469,9 +506,16 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
                 productName = captured.productName,
                 qty = captured.quantity,
                 revenue = captured.totalRevenue,
-                cost = captured.totalRevenue * 0.45,
+                cost = captured.totalRevenue * 0.40,
                 status = "Confirmed",
-                deliveryDate = captured.deliveryDate
+                deliveryDate = captured.deliveryDate,
+                deliveryTimeSlot = captured.deliveryTimeSlot,
+                weightOrSize = captured.weightOrSize,
+                flavor = captured.flavor,
+                isEggless = captured.isEggless,
+                customMessageOnCake = captured.customMessageOnCake,
+                aiExplanation = captured.aiExplanation,
+                rawWhatsAppText = captured.rawText
             )
         }
     }

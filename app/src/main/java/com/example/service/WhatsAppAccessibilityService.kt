@@ -36,7 +36,13 @@ class WhatsAppAccessibilityService : AccessibilityService() {
                 val messages = mutableListOf<String>()
                 collectChatMessages(root, messages)
 
-                val latestMessagesText = messages.takeLast(4).joinToString("\n")
+                // Scroll inspection: Check if conversation can be scrolled up slightly to see earlier order specs if brief
+                if (messages.size < 3) {
+                    val chatScrollable = findScrollable(root)
+                    chatScrollable?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
+                }
+
+                val latestMessagesText = messages.takeLast(8).joinToString("\n")
                 if (latestMessagesText.isNotBlank() && latestMessagesText != lastScannedNodeText) {
                     lastScannedNodeText = latestMessagesText
                     Log.d(TAG, "Active conversation detected with $contactName: $latestMessagesText")
@@ -58,7 +64,7 @@ class WhatsAppAccessibilityService : AccessibilityService() {
                         mainHandler.postDelayed({
                             isNavigatingBack = false
                         }, 1000)
-                    }, 1200)
+                    }, 1400)
                 }
             } else if (isAutoPilot && !isNavigatingBack) {
                 // 2. We are in the main WhatsApp Chat List screen

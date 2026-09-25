@@ -450,6 +450,16 @@ fun OrderItemCard(
                 Column {
                     Text("Product", style = MaterialTheme.typography.labelSmall)
                     Text("${order.productName} ×${order.quantity}", fontWeight = FontWeight.Bold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 2.dp)) {
+                        Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp)) {
+                            Text(order.weightOrSize, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                        }
+                        if (order.isEggless) {
+                            Surface(color = Color(0xFF10B981).copy(alpha = 0.15f), shape = RoundedCornerShape(4.dp)) {
+                                Text("🌱 Eggless", color = Color(0xFF10B981), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                            }
+                        }
+                    }
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
@@ -471,6 +481,40 @@ fun OrderItemCard(
                     modifier = Modifier.size(24.dp)
                 ) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+
+            if (order.customMessageOnCake.isNotBlank()) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "✍️ Name on Cake: \"${order.customMessageOnCake}\"",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            if (order.aiExplanation.isNotBlank() || order.rawWhatsAppText.isNotBlank()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp))
+                        .padding(8.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        if (order.rawWhatsAppText.isNotBlank()) {
+                            Text("💬 WhatsApp: \"${order.rawWhatsAppText.take(90)}\"", fontSize = 11.sp, color = Color(0xFF334155))
+                        }
+                        if (order.aiExplanation.isNotBlank()) {
+                            Text("🧠 AI: ${order.aiExplanation}", fontSize = 10.sp, color = Color(0xFF0284C7), fontWeight = FontWeight.Medium)
+                        }
+                    }
                 }
             }
 

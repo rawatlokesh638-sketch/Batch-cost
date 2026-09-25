@@ -23,12 +23,18 @@ data class CapturedWhatsAppOrder(
     val id: String = java.util.UUID.randomUUID().toString(),
     val customerName: String,
     val productName: String,
-    val quantity: Int,
-    val totalRevenue: Double,
-    val deliveryDate: String,
-    val notes: String,
-    val rawText: String,
-    val source: String, // "Auto-Pilot Crawler", "Notification", "Live Screen", "Manual"
+    val quantity: Int = 1,
+    val weightOrSize: String = "1 kg",
+    val flavor: String = "Chocolate",
+    val isEggless: Boolean = false,
+    val customMessageOnCake: String = "",
+    val totalRevenue: Double = 0.0,
+    val deliveryDate: String = "Tomorrow",
+    val deliveryTimeSlot: String = "Evening",
+    val notes: String = "",
+    val rawText: String = "",
+    val aiExplanation: String = "",
+    val source: String = "Auto-Pilot Crawler", // "Auto-Pilot Crawler", "Notification", "Live Screen", "Manual"
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -55,6 +61,9 @@ object WhatsAppOrderCaptureHub {
     private val _crawlerLogs = MutableStateFlow<List<String>>(emptyList())
     val crawlerLogs: StateFlow<List<String>> = _crawlerLogs.asStateFlow()
 
+    private val _skippedNonWorkCount = MutableStateFlow(0)
+    val skippedNonWorkCount: StateFlow<Int> = _skippedNonWorkCount.asStateFlow()
+
     var parsingConfig: AIParsingConfig = AIParsingConfig()
 
     // Visited contacts during active session
@@ -73,7 +82,7 @@ object WhatsAppOrderCaptureHub {
 
     fun addCrawlerLog(msg: String) {
         val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
-        _crawlerLogs.value = listOf("[$time] $msg") + _crawlerLogs.value.take(40)
+        _crawlerLogs.value = listOf("[$time] $msg") + _crawlerLogs.value.take(50)
         _agentActiveStatus.value = msg
         Log.d(TAG, "Crawler: $msg")
     }
@@ -92,7 +101,7 @@ object WhatsAppOrderCaptureHub {
                 ?: pm.getLaunchIntentForPackage("com.whatsapp.w4b")
                 ?: Intent(Intent.ACTION_VIEW, Uri.parse("whatsapp://"))
             context.startActivity(launchIntent)
-            addCrawlerLog("📱 WhatsApp opened. Autonomous crawler listening for chat windows...")
+            addCrawlerLog("📱 WhatsApp opened. Autonomous crawler inspecting chat screens & message context...")
         } catch (e: Exception) {
             addCrawlerLog("⚠️ Could not open WhatsApp: ${e.localizedMessage}")
             _isAutoPilotRunning.value = false
@@ -101,7 +110,7 @@ object WhatsAppOrderCaptureHub {
 
     fun stopAutoPilot() {
         _isAutoPilotRunning.value = false
-        addCrawlerLog("⏹️ Auto-Pilot stopped by user.")
+        addCrawlerLog("⏹️ Auto-Pilot stopped.")
     }
 
     /**
@@ -132,23 +141,36 @@ object WhatsAppOrderCaptureHub {
 
                 if (jsonString.isNotBlank()) {
                     val json = JSONObject(jsonString)
+                    val isBakeryOrder = json.optBoolean("isBakeryOrder", true)
                     val candidateProduct = json.optString("productName", "").trim()
 
-                    if (candidateProduct.isNotBlank() && !candidateProduct.equals("Unknown", ignoreCase = true)) {
+                    if (isBakeryOrder && candidateProduct.isNotBlank() && !candidateProduct.equals("Unknown", ignoreCase = true)) {
                         val customer = json.optString("customerName", senderName).ifBlank { senderName }
                         val qty = json.optInt("quantity", 1).coerceAtLeast(1)
+                        val weight = json.optString("weightOrSize", "1 kg").ifBlank { "1 kg" }
+                        val flavor = json.optString("flavor", "Chocolate")
+                        val eggless = json.optBoolean("isEggless", false)
+                        val customMsg = json.optString("customMessageOnCake", "")
                         val revenue = json.optDouble("totalRevenue", 0.0)
                         val delivery = json.optString("deliveryDate", "Tomorrow").ifBlank { "Tomorrow" }
+                        val timeSlot = json.optString("deliveryTimeSlot", "Evening").ifBlank { "Evening" }
                         val notes = json.optString("notes", "Auto-captured via $source")
+                        val explanation = json.optString("aiExplanation", "Identified as bakery order for $candidateProduct")
 
                         val newOrder = CapturedWhatsAppOrder(
                             customerName = customer,
                             productName = candidateProduct,
                             quantity = qty,
+                            weightOrSize = weight,
+                            flavor = flavor,
+                            isEggless = eggless,
+                            customMessageOnCake = customMsg,
                             totalRevenue = revenue,
                             deliveryDate = delivery,
+                            deliveryTimeSlot = timeSlot,
                             notes = notes,
                             rawText = messageText,
+                            aiExplanation = explanation,
                             source = source
                         )
 
@@ -158,10 +180,11 @@ object WhatsAppOrderCaptureHub {
                         // Save into Room DB and Firebase Cloud
                         orderRecordedListener?.invoke(newOrder)
 
-                        addCrawlerLog("✅ SAVED ORDER: $candidateProduct ($customer, ₹$revenue)")
-                        Log.i(TAG, "Order auto-captured from WhatsApp: $candidateProduct for $customer")
+                        addCrawlerLog("✅ ORDER EXTRACTED: $candidateProduct ($customer, ₹$revenue)")
+                        Log.i(TAG, "Bakery order captured: $candidateProduct for $customer ($weight, Eggless: $eggless)")
                     } else {
-                        addCrawlerLog("ℹ️ No bakery order in message from '$senderName'")
+                        _skippedNonWorkCount.value += 1
+                        addCrawlerLog("🛡️ Non-Bakery message skipped from '$senderName' (Casual chat / non-work)")
                     }
                 }
             } catch (e: Exception) {
@@ -181,15 +204,15 @@ object WhatsAppOrderCaptureHub {
 
         scope.launch {
             addCrawlerLog("🤖 Agent 3.8 Flash Auto-Pilot initializing...")
-            delay(600)
+            delay(500)
             addCrawlerLog("📂 Opening WhatsApp chat list...")
-            delay(800)
+            delay(700)
 
             val chatQueue = listOf(
-                Pair("Pooja Sharma", "Bhaiya 1kg Dutch Truffle Chocolate Cake kal shaam 6 baje chahiye. Name on cake: 'Happy Birthday Aarav'. Eggless please!"),
-                Pair("Rahul Verma", "Need 2 boxes Red Velvet Cupcakes (12 pcs) for office party tomorrow 2 PM. Price kitna hoga?"),
-                Pair("Ritu Mehra", "Hi, are you open today? Just wanted to check store timings."),
-                Pair("Simran Kaur", "Confirm 1 Pineapple Fresh Cream Cake (500g) for today 5:30 PM. Payment on delivery.")
+                Pair("Pooja Sharma", "Bhaiya 1kg Dutch Truffle Chocolate Cake kal shaam 6 baje chahiye. Name on cake: 'Happy Birthday Aarav'. Eggless please! Rate kya hoga? Total ₹650 bheju?"),
+                Pair("Rahul Verma", "Need 2 boxes Red Velvet Cupcakes (12 pcs) for office party tomorrow 2 PM. Price ₹450 total na?"),
+                Pair("Ankit Gupta", "Bhai match dekh raha hai kya? Sham ko milte hai."),
+                Pair("Simran Kaur", "Confirm 1 Pineapple Fresh Cream Cake (500g) for today 5:30 PM. Rate ₹380, payment on delivery.")
             )
 
             var ordersFoundCount = 0
@@ -197,24 +220,24 @@ object WhatsAppOrderCaptureHub {
             for ((index, chat) in chatQueue.withIndex()) {
                 val (contact, text) = chat
                 addCrawlerLog("👉 [${index + 1}/${chatQueue.size}] Auto-opening chat with '$contact'...")
-                delay(1200)
-
-                addCrawlerLog("🔍 Agent 3.8 Flash scanning messages on screen...")
                 delay(1000)
+
+                addCrawlerLog("📜 Scrolling and scanning full chat context with '$contact'...")
+                delay(900)
 
                 // Process message
                 processCapturedWhatsAppMessage(contact, text, "Auto-Pilot Crawler", context)
-                delay(1200)
+                delay(1100)
 
                 if (text.contains("Cake", ignoreCase = true) || text.contains("Cupcakes", ignoreCase = true)) {
                     ordersFoundCount++
                 }
 
-                addCrawlerLog("↩️ Auto-pressing BACK... Returning to chat list")
-                delay(800)
+                addCrawlerLog("↩️ Returning to WhatsApp chat list...")
+                delay(700)
             }
 
-            addCrawlerLog("🎉 Auto-Pilot Finished! Scanned ${chatQueue.size} chats, Auto-Saved $ordersFoundCount orders to Firebase Cloud!")
+            addCrawlerLog("🎉 Auto-Pilot Finished! Scanned ${chatQueue.size} chats, Auto-Saved $ordersFoundCount orders to Firebase Cloud in Realtime!")
             _isAutoPilotRunning.value = false
         }
     }

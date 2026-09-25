@@ -251,8 +251,9 @@ class FirebaseSyncManager(
                     val userRef = db.reference.child("users").child(uid)
                     userRef.setValue(rtdbPayload).await()
 
-                    // Also mirror into a device backup node
+                    // Also mirror into a device backup node & live sync node
                     db.reference.child("device_backups").child(uid).setValue(rtdbPayload).await()
+                    db.reference.child("realtime_live_state").child(uid).setValue(rtdbPayload).await()
 
                     rtdbSuccess = true
                     Log.d(TAG, "RTDB sync SUCCESS on ${db.reference}")
@@ -268,9 +269,9 @@ class FirebaseSyncManager(
                 if (overallSuccess) {
                     _syncStatus.value = CloudSyncStatus.SUCCESS
                     _lastSyncTimestamp.value = timestamp
-                    val channel = if (firestoreSuccess && rtdbSuccess) "Firestore + RTDB" 
-                                  else if (firestoreSuccess) "Firestore" else "RTDB"
-                    _syncMessage.value = "Synced successfully to $channel"
+                    val channel = if (firestoreSuccess && rtdbSuccess) "Firestore + Realtime DB" 
+                                  else if (rtdbSuccess) "Firebase Realtime DB" else "Firebase Cloud"
+                    _syncMessage.value = "🟢 Realtime Auto-Synced ($channel)"
                     Log.i(TAG, "Cloud sync complete for UID $uid ($channel)")
                     onComplete?.invoke(true)
                 } else {
@@ -279,6 +280,53 @@ class FirebaseSyncManager(
                     Log.e(TAG, "Cloud sync failed for UID $uid: $errorDetails")
                     onComplete?.invoke(false)
                 }
+            }
+        }
+    }
+
+    /**
+     * Start continuous background realtime listener from Firebase RTDB.
+     * Keeps local state aligned with cloud automatically without any user interaction.
+     */
+    fun startRealtimeListener(
+        onOrdersLoaded: (List<RecordedOrder>) -> Unit,
+        onBatchesLoaded: (List<SavedBatchRecord>) -> Unit,
+        onAliasesLoaded: (Map<String, String>) -> Unit,
+        onBatchCountLoaded: (Int) -> Unit,
+        onConfigLoaded: (AIParsingConfig) -> Unit
+    ) {
+        val uid = resolveUserId()
+        val rtdbTargets = listOfNotNull(rtdbNamed, rtdbDefault)
+        for (db in rtdbTargets) {
+            try {
+                db.reference.child("users").child(uid).addValueEventListener(object : com.google.firebase.database.ValueEventListener {
+                    override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                        if (!snapshot.exists()) return
+                        try {
+                            val orders = snapshot.child("orders").children.mapNotNull { it.getValue(RecordedOrder::class.java) }
+                            val batches = snapshot.child("batches").children.mapNotNull { it.getValue(SavedBatchRecord::class.java) }
+                            val aliases = snapshot.child("productAliases").getValue(object : com.google.firebase.database.GenericTypeIndicator<Map<String, String>>() {}) ?: emptyMap()
+                            val count = snapshot.child("batchCount").getValue(Int::class.java) ?: 0
+                            val config = snapshot.child("aiParsingConfig").getValue(AIParsingConfig::class.java) ?: AIParsingConfig()
+
+                            if (orders.isNotEmpty()) onOrdersLoaded(orders)
+                            if (batches.isNotEmpty()) onBatchesLoaded(batches)
+                            if (aliases.isNotEmpty()) onAliasesLoaded(aliases)
+                            if (count > 0) onBatchCountLoaded(count)
+                            onConfigLoaded(config)
+                            Log.d(TAG, "Realtime RTDB snapshot received: ${orders.size} orders")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Error handling RTDB value event: ${e.message}")
+                        }
+                    }
+
+                    override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                        Log.w(TAG, "RTDB ValueEventListener cancelled: ${error.message}")
+                    }
+                })
+                break
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed attaching RTDB listener: ${e.message}")
             }
         }
     }

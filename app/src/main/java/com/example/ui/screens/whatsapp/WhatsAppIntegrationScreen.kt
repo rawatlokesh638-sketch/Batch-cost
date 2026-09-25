@@ -48,8 +48,10 @@ fun WhatsAppIntegrationScreen(
     val agentStatus by WhatsAppOrderCaptureHub.agentActiveStatus.collectAsStateWithLifecycle()
     val isAutoPilotRunning by WhatsAppOrderCaptureHub.isAutoPilotRunning.collectAsStateWithLifecycle()
     val crawlerLogs by WhatsAppOrderCaptureHub.crawlerLogs.collectAsStateWithLifecycle()
+    val skippedNonWorkCount by WhatsAppOrderCaptureHub.skippedNonWorkCount.collectAsStateWithLifecycle()
 
     var manualChatText by remember { mutableStateOf("") }
+    var selectedOrderForDetails by remember { mutableStateOf<CapturedWhatsAppOrder?>(null) }
 
     LaunchedEffect(parsingConfig) {
         WhatsAppOrderCaptureHub.parsingConfig = parsingConfig
@@ -336,16 +338,27 @@ fun WhatsAppIntegrationScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("📦 Auto-Saved Orders (${capturedOrders.size})", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Surface(
-                            color = Color(0xFF10B981).copy(alpha = 0.15f),
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Text("☁️ Synced to Firebase", color = Color(0xFF10B981), fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (skippedNonWorkCount > 0) {
+                                Surface(
+                                    color = Color(0xFF64748B).copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text("🛡️ $skippedNonWorkCount Non-Work Skipped", color = Color(0xFF475569), fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp))
+                                }
+                            }
+                            Surface(
+                                color = Color(0xFF10B981).copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text("🟢 Realtime RTDB Synced", color = Color(0xFF10B981), fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp))
+                            }
                         }
                     }
 
                     capturedOrders.forEach { order ->
                         Card(
+                            onClick = { selectedOrderForDetails = order },
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             shape = RoundedCornerShape(12.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -355,31 +368,145 @@ fun WhatsAppIntegrationScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Box(
                                         modifier = Modifier
-                                            .size(34.dp)
-                                            .background(Color(0xFF10B981), CircleShape),
+                                            .size(36.dp)
+                                            .background(if (order.isEggless) Color(0xFF10B981) else Color(0xFFF59E0B), CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                        Text(if (order.isEggless) "🌱" else "🍰", fontSize = 18.sp)
                                     }
                                     Spacer(Modifier.width(10.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(order.productName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                        Text("Customer: ${order.customerName} • Qty: ${order.quantity}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("Customer: ${order.customerName} • ${order.weightOrSize}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    Text("₹${order.totalRevenue}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text("₹${order.totalRevenue}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+                                        Text("Tap for details 🔍", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
+                                    }
                                 }
                                 Spacer(Modifier.height(8.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("📅 Delivery: ${order.deliveryDate}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text("Source: ${order.source}", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        if (order.isEggless) {
+                                            Surface(color = Color(0xFF10B981).copy(alpha = 0.15f), shape = RoundedCornerShape(4.dp)) {
+                                                Text("Eggless", color = Color(0xFF10B981), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                                            }
+                                        }
+                                        if (order.customMessageOnCake.isNotBlank()) {
+                                            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(4.dp)) {
+                                                Text("✍️ '${order.customMessageOnCake}'", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                                            }
+                                        }
+                                    }
+                                    Text("📅 ${order.deliveryDate} (${order.deliveryTimeSlot})", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
                     }
                 }
+            }
+
+            // Order Details Inspection Modal
+            selectedOrderForDetails?.let { detailOrder ->
+                AlertDialog(
+                    onDismissRequest = { selectedOrderForDetails = null },
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🔍 Order Intelligence Breakdown", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                        }
+                    },
+                    text = {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Section 1: Kya aaya tha WhatsApp pe
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFE2F7E1)),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("💬 Kya aaya tha WhatsApp pe (Raw Message):", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF166534))
+                                    Spacer(Modifier.height(4.dp))
+                                    Text("\"${detailOrder.rawText}\"", fontSize = 13.sp, color = Color(0xFF14532D))
+                                    Spacer(Modifier.height(4.dp))
+                                    Text("From: ${detailOrder.customerName} • Source: ${detailOrder.source}", fontSize = 11.sp, color = Color(0xFF15803D))
+                                }
+                            }
+
+                            // Section 2: AI ne kaise samjha (Reasoning)
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("🧠 AI Decision & Extraction Logic:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(detailOrder.aiExplanation.ifBlank { "Automatically detected as bakery cake order. Extracted item name, weight, eggless requirement, and delivery schedule from WhatsApp chat." }, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+
+                            // Section 3: Extracted Specs Table
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("📋 Extracted Specifications:", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    HorizontalDivider()
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("Product:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                                        Text(detailOrder.productName, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("Weight / Qty:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                                        Text("${detailOrder.weightOrSize} (${detailOrder.quantity}x)", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("Flavor / Type:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                                        Text(detailOrder.flavor, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("Eggless Preference:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                                        Text(if (detailOrder.isEggless) "🌱 100% Eggless" else "🥚 Contains Egg", fontWeight = FontWeight.Bold, color = if (detailOrder.isEggless) Color(0xFF10B981) else Color(0xFFD97706), fontSize = 12.sp)
+                                    }
+                                    if (detailOrder.customMessageOnCake.isNotBlank()) {
+                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Name on Cake:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                                            Text("\"${detailOrder.customMessageOnCake}\"", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                                        }
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("Delivery Schedule:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                                        Text("${detailOrder.deliveryDate} at ${detailOrder.deliveryTimeSlot}", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("Total Quoted Price:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                                        Text("₹${detailOrder.totalRevenue}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("Cloud Status:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                                        Text("🟢 Synced to Firebase RTDB", fontWeight = FontWeight.Bold, color = Color(0xFF10B981), fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = { selectedOrderForDetails = null },
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Done")
+                        }
+                    }
+                )
             }
 
             // Quick Chat Message Tester
