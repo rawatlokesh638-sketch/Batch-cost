@@ -279,51 +279,162 @@ fun WhatsAppIntegrationScreen(
                 }
             }
 
-            // Device Accessibility & Notification Permission Shortcuts
+            // 3-Way Zero Permission Integration Suite
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text("⚙️ Phone Automation Settings", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Text("Phone me in 2 permissions ko enable karein taaki Agent WhatsApp ko auto-open aur auto-click kar sake:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(10.dp))
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Bolt, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("3 Direct Zero-Permission Channels", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    // 1. Direct Share
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                try {
-                                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                                } catch (e: Exception) {
-                                    scope.launch { snackbarHostState.showSnackbar("Accessibility settings not available.") }
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("1️⃣ 1-Tap Direct WhatsApp Share", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Spacer(Modifier.weight(1f))
+                                Surface(color = Color(0xFF10B981).copy(alpha = 0.15f), shape = RoundedCornerShape(4.dp)) {
+                                    Text("Official & Safe", color = Color(0xFF10B981), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                 }
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.TouchApp, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("1. Auto-Clicker", fontSize = 11.sp)
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text("WhatsApp me customer ka message ya screenshot select karein ➔ Share (➦) ➔ 'BatchCost' choose karein. Gemini 3.8 Flash turant extract kar lega!", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    val pm = context.packageManager
+                                    val intent = pm.getLaunchIntentForPackage("com.whatsapp")
+                                        ?: pm.getLaunchIntentForPackage("com.whatsapp.w4b")
+                                        ?: Intent(Intent.ACTION_VIEW, Uri.parse("whatsapp://"))
+                                    try {
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        scope.launch { snackbarHostState.showSnackbar("WhatsApp is not installed on this device.") }
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth().height(40.dp)
+                            ) {
+                                Icon(Icons.Default.OpenInNew, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Open WhatsApp to Share Message", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
                         }
+                    }
 
-                        OutlinedButton(
-                            onClick = {
-                                try {
-                                    context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                                } catch (e: Exception) {
-                                    scope.launch { snackbarHostState.showSnackbar("Notification settings not available.") }
+                    // 2. Clipboard Smart Bar
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    val clipText = clipboard?.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("2️⃣ Auto-Clipboard Smart Detector", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Spacer(Modifier.weight(1f))
+                                Text(if (clipText.isNotBlank()) "Copied Text Ready" else "Empty", fontSize = 10.sp, color = if (clipText.isNotBlank()) Color(0xFF10B981) else Color.Gray, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            if (clipText.isNotBlank()) {
+                                Text("\"${clipText.take(90)}${if (clipText.length > 90) "..." else ""}\"", fontSize = 11.sp, color = Color(0xFF334155), maxLines = 2)
+                                Spacer(Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        WhatsAppOrderCaptureHub.processCapturedWhatsAppMessage(
+                                            senderName = "Clipboard Customer",
+                                            messageText = clipText,
+                                            source = "Clipboard Auto-Bar",
+                                            context = context
+                                        )
+                                        scope.launch { snackbarHostState.showSnackbar("⚡ Scanned with Gemini 3.8 Flash & synced to Firebase!") }
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth().height(38.dp)
+                                ) {
+                                    Icon(Icons.Default.ContentPasteGo, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("⚡ Scan Clipboard Text Now", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.NotificationsActive, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("2. Notifications", fontSize = 11.sp)
+                            } else {
+                                Text("WhatsApp me koi bhi order message Copy karein aur yahan aakar 1-Tap me scan karein.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+
+                    // 3. WhatsApp Full Chat Export File Importer (.txt)
+                    var isImportingChat by remember { mutableStateOf(false) }
+                    var importStatusText by remember { mutableStateOf("") }
+                    val filePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+                    ) { uri: Uri? ->
+                        if (uri != null) {
+                            scope.launch {
+                                try {
+                                    isImportingChat = true
+                                    importStatusText = "Reading exported chat file..."
+                                    val content = context.contentResolver.openInputStream(uri)?.use { stream ->
+                                        stream.bufferedReader().use { it.readText() }
+                                    } ?: ""
+                                    if (content.isNotBlank()) {
+                                        importStatusText = "Analyzing orders with Gemini 3.8 Flash..."
+                                        val totalFound = WhatsAppOrderCaptureHub.processExportedChatContent(
+                                            fileContent = content,
+                                            context = context,
+                                            onProgress = { processed, orders ->
+                                                importStatusText = "Scanned $processed chats, found $orders bakery orders..."
+                                            }
+                                        )
+                                        snackbarHostState.showSnackbar("🎉 Finished! Imported $totalFound orders to Firebase RTDB!")
+                                    } else {
+                                        snackbarHostState.showSnackbar("Could not read selected file.")
+                                    }
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar("Import failed: ${e.localizedMessage}")
+                                } finally {
+                                    isImportingChat = false
+                                    importStatusText = ""
+                                }
+                            }
+                        }
+                    }
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text("3️⃣ WhatsApp Full Chat Export (.txt) Importer", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Spacer(Modifier.height(4.dp))
+                            Text("WhatsApp me Chat kholein ➔ 3 dots ➔ More ➔ Export Chat (Without Media) ➔ Save .txt file. Yahan import karke saare orders ek baar me nikal lein!", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    filePickerLauncher.launch("text/*")
+                                },
+                                enabled = !isImportingChat,
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth().height(40.dp)
+                            ) {
+                                if (isImportingChat) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(importStatusText, fontSize = 11.sp)
+                                } else {
+                                    Icon(Icons.Default.DriveFolderUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("📂 Pick WhatsApp Chat (.txt) File", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }

@@ -44,7 +44,7 @@ class FirebaseSyncManager(
     private val scope: CoroutineScope
 ) {
     private val TAG = "FirebaseSyncManager"
-    private val RTDB_URL = "https://gen-lang-client-0661181674-default-rtdb.firebaseio.com"
+    private val RTDB_URL = "https://axial-mind-bmbw7-default-rtdb.firebaseio.com"
     private val FIRESTORE_DB_ID = "ai-studio-batchcost-769eeb29-ae9d-4653-95cf-9e7e5c2f52ea"
 
     private val auth: FirebaseAuth? by lazy {

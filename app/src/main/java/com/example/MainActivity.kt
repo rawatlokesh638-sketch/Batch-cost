@@ -7,10 +7,19 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Kitchen
@@ -25,9 +34,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.BatchCostViewModel
 import com.example.ui.ProductWithDetails
@@ -59,12 +71,29 @@ import com.example.ui.theme.BatchCostTheme
 class MainActivity : ComponentActivity() {
 
     private val viewModel: BatchCostViewModel by viewModels()
+    private val incomingIntent = kotlinx.coroutines.flow.MutableStateFlow<android.content.Intent?>(null)
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        incomingIntent.value = intent
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        incomingIntent.value = intent
         try {
             com.example.util.GeminiService.init(this)
-            com.google.firebase.FirebaseApp.initializeApp(this)
+            if (com.google.firebase.FirebaseApp.getApps(this).isEmpty()) {
+                val options = com.google.firebase.FirebaseOptions.Builder()
+                    .setProjectId("axial-mind-bmbw7")
+                    .setApplicationId("1:803498997787:web:abd330aad4be527dcb60be")
+                    .setApiKey("AIzaSyD50PSKxaQlBjl5f6a9X4H4WnwZlOrYMC4")
+                    .setDatabaseUrl("https://axial-mind-bmbw7-default-rtdb.firebaseio.com")
+                    .setStorageBucket("axial-mind-bmbw7.firebasestorage.app")
+                    .build()
+                com.google.firebase.FirebaseApp.initializeApp(this, options)
+            }
             val firebaseAppCheck = com.google.firebase.appcheck.FirebaseAppCheck.getInstance()
             firebaseAppCheck.installAppCheckProviderFactory(
                 com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory.getInstance()
@@ -87,6 +116,7 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
+                val currentIntent by incomingIntent.collectAsStateWithLifecycle()
                 val profile by viewModel.businessProfile.collectAsStateWithLifecycle()
                 val onboardingState by viewModel.onboardingState.collectAsStateWithLifecycle()
                 val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
@@ -111,23 +141,54 @@ class MainActivity : ComponentActivity() {
                 var showAiAssistantSheet by remember { mutableStateOf(false) }
                 var showMonetizationModal by remember { mutableStateOf(false) }
                 var showWhatsAppLink by remember { mutableStateOf(false) }
-                var sharedTextFromIntent by remember {
-                    mutableStateOf(
-                        if (intent?.action == android.content.Intent.ACTION_SEND && intent?.type?.startsWith("text/") == true) {
-                            intent?.getStringExtra(android.content.Intent.EXTRA_TEXT)
-                        } else null
-                    )
-                }
-                androidx.compose.runtime.LaunchedEffect(sharedTextFromIntent) {
-                    if (!sharedTextFromIntent.isNullOrBlank()) {
-                        showWhatsAppLink = true
+                var showAIParsingConfig by remember { mutableStateOf(false) }
+                var showOrderLinkGen by remember { mutableStateOf(false) }
+                var showVisualScanner by remember { mutableStateOf(false) }
+                var sharedTextFromIntent by remember { mutableStateOf<String?>(null) }
+
+                androidx.compose.runtime.LaunchedEffect(currentIntent) {
+                    val it = currentIntent ?: return@LaunchedEffect
+                    if (it.action == android.content.Intent.ACTION_SEND) {
+                        if (it.type?.startsWith("text/") == true) {
+                            val text = it.getStringExtra(android.content.Intent.EXTRA_TEXT)
+                            if (!text.isNullOrBlank()) {
+                                sharedTextFromIntent = text
+                                showWhatsAppLink = true
+                            }
+                        } else if (it.type?.startsWith("image/") == true) {
+                            showVisualScanner = true
+                        }
                     }
                 }
-                var showAIParsingConfig by remember { mutableStateOf(false) }
-                var showVisualScanner by remember { mutableStateOf(false) }
-                var showOrderLinkGen by remember { mutableStateOf(false) }
+
+                // Global Auto-Clipboard Smart Detector
+                val context = androidx.compose.ui.platform.LocalContext.current
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
+                var detectedClipboardText by remember { mutableStateOf<String?>(null) }
+                var dismissedClipboardText by remember { mutableStateOf<String?>(null) }
+
+                androidx.compose.runtime.DisposableEffect(Unit) {
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    fun checkClip() {
+                        val clip = clipboard?.primaryClip?.getItemAt(0)?.text?.toString()?.trim() ?: ""
+                        val lower = clip.lowercase()
+                        val isOrder = (lower.contains("cake") || lower.contains("cupcake") || lower.contains("pastry") ||
+                                       lower.contains("kg") || lower.contains("eggless") || lower.contains("order") ||
+                                       lower.contains("brownie") || lower.contains("rate") || lower.contains("delivery"))
+                        if (isOrder && clip != dismissedClipboardText && clip.length > 5) {
+                            detectedClipboardText = clip
+                        }
+                    }
+                    val listener = android.content.ClipboardManager.OnPrimaryClipChangedListener {
+                        checkClip()
+                    }
+                    clipboard?.addPrimaryClipChangedListener(listener)
+                    checkClip()
+                    onDispose {
+                        clipboard?.removePrimaryClipChangedListener(listener)
+                    }
+                }
                 val cloudSyncStatus by viewModel.cloudSyncStatus.collectAsStateWithLifecycle()
 
                 if (!isLoggedIn) {
@@ -307,15 +368,90 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             ) { innerPadding ->
-                                Box(
+                                Column(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(innerPadding)
                                 ) {
-                                    AnimatedContent(
-                                        targetState = currentTab,
-                                        label = "TabContent"
-                                    ) { tab ->
+                                    // Global Auto-Clipboard Smart Detector Banner
+                                    androidx.compose.animation.AnimatedVisibility(visible = detectedClipboardText != null) {
+                                        androidx.compose.material3.Card(
+                                            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color(0xFF0F766E)),
+                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(10.dp),
+                                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                            ) {
+                                                androidx.compose.material3.Icon(
+                                                    Icons.Default.ContentPaste,
+                                                    contentDescription = null,
+                                                    tint = androidx.compose.ui.graphics.Color.White,
+                                                    modifier = Modifier.size(22.dp)
+                                                )
+                                                Spacer(Modifier.width(8.dp))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text("WhatsApp Order Copied!", color = androidx.compose.ui.graphics.Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 12.sp)
+                                                    Text(
+                                                        "\"${detectedClipboardText?.take(50)}...\"",
+                                                        color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f),
+                                                        fontSize = 11.sp,
+                                                        maxLines = 1
+                                                    )
+                                                }
+                                                Spacer(Modifier.width(6.dp))
+                                                androidx.compose.material3.Button(
+                                                    onClick = {
+                                                        val textToScan = detectedClipboardText ?: ""
+                                                        detectedClipboardText = null
+                                                        dismissedClipboardText = textToScan
+                                                        scope.launch {
+                                                            com.example.service.WhatsAppOrderCaptureHub.processCapturedWhatsAppMessage(
+                                                                senderName = "Clipboard Customer",
+                                                                messageText = textToScan,
+                                                                source = "Auto Clipboard Bar",
+                                                                context = context
+                                                            )
+                                                            snackbarHostState.showSnackbar("⚡ Order extracted & synced to Firebase Realtime DB!")
+                                                        }
+                                                    },
+                                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFF10B981)),
+                                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                    modifier = Modifier.height(32.dp)
+                                                ) {
+                                                    Text("⚡ AI Save", color = androidx.compose.ui.graphics.Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 11.sp)
+                                                }
+                                                androidx.compose.material3.IconButton(
+                                                    onClick = {
+                                                        dismissedClipboardText = detectedClipboardText
+                                                        detectedClipboardText = null
+                                                    },
+                                                    modifier = Modifier.size(24.dp)
+                                                ) {
+                                                    androidx.compose.material3.Icon(
+                                                        Icons.Default.Close,
+                                                        contentDescription = "Dismiss",
+                                                        tint = androidx.compose.ui.graphics.Color.White,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .weight(1f)
+                                    ) {
+                                        AnimatedContent(
+                                            targetState = currentTab,
+                                            label = "TabContent"
+                                        ) { tab ->
                                         when (tab) {
                                             0 -> {
                                                 val config by viewModel.aiParsingConfig.collectAsStateWithLifecycle()
@@ -394,6 +530,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
+                        }
 
                             if (showPriceListModal) {
                                 com.example.ui.components.PriceListGeneratorDialog(

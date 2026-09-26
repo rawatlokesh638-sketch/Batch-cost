@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <resources>
-    <string name="firestore_database_id" translatable="false">ai-studio-android-batchcos-769eeb29-ae9d-4653-95cf-9e7e5c2f52ea</string>
+    <string name="firestore_database_id" translatable="false">ai-studio-batchcost-769eeb29-ae9d-4653-95cf-9e7e5c2f52ea</string>
 </resources>

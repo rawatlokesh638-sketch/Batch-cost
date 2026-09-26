@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 data class CapturedWhatsAppOrder(
@@ -240,5 +241,51 @@ object WhatsAppOrderCaptureHub {
             addCrawlerLog("🎉 Auto-Pilot Finished! Scanned ${chatQueue.size} chats, Auto-Saved $ordersFoundCount orders to Firebase Cloud in Realtime!")
             _isAutoPilotRunning.value = false
         }
+    }
+
+    /**
+     * Parses an exported WhatsApp chat file (.txt) and extracts all customer orders using Gemini 3.8 Flash.
+     */
+    suspend fun processExportedChatContent(
+        fileContent: String,
+        context: Context? = null,
+        onProgress: ((processed: Int, ordersFound: Int) -> Unit)? = null
+    ): Int = withContext(Dispatchers.IO) {
+        val lines = fileContent.lines()
+        val messageRegex = java.util.regex.Pattern.compile("^(?:\\[?\\d{1,2}[\\/\\.-]\\d{1,2}[\\/\\.-]\\d{2,4},?\\s+\\d{1,2}:\\d{2}(?::\\d{2})?\\s*(?:[AaPp][Mm])?\\]?\\s*[-–]?\\s*)([^:]+):\\s*(.*)$")
+
+        val messagesByContact = mutableMapOf<String, StringBuilder>()
+
+        for (line in lines) {
+            val matcher = messageRegex.matcher(line)
+            if (matcher.find()) {
+                val sender = matcher.group(1)?.trim() ?: continue
+                val text = matcher.group(2)?.trim() ?: continue
+                if (text.contains("<Media omitted>", ignoreCase = true) || text.contains("end-to-end encrypted", ignoreCase = true)) {
+                    continue
+                }
+                messagesByContact.getOrPut(sender) { StringBuilder() }.append(text).append("\n")
+            }
+        }
+
+        var totalOrders = 0
+        var count = 0
+        addCrawlerLog("📂 Scanning WhatsApp Chat Export: ${messagesByContact.size} participants found")
+
+        for ((contact, textBuilder) in messagesByContact) {
+            count++
+            val fullText = textBuilder.toString().trim()
+            if (fullText.isNotBlank()) {
+                val initialOrders = _capturedOrders.value.size
+                processCapturedWhatsAppMessage(contact, fullText, "Chat Export Import", context)
+                if (_capturedOrders.value.size > initialOrders) {
+                    totalOrders++
+                }
+                onProgress?.invoke(count, totalOrders)
+            }
+        }
+
+        addCrawlerLog("🎉 Chat Export processed! Found $totalOrders bakery orders.")
+        totalOrders
     }
 }

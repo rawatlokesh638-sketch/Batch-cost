@@ -68,6 +68,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.ProductWithDetails
 import com.example.ui.RecordedOrder
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import com.example.util.CurrencyFormatter
 
 val ORDER_STATUSES = listOf("New", "Confirmed", "Preparing", "Ready", "Delivered", "Cancelled")
@@ -531,6 +534,31 @@ fun OrderItemCard(
                     color = Color(0xFF475569),
                     fontWeight = FontWeight.Medium
                 )
+            }
+
+            val context = LocalContext.current
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        val greeting = "Hello ${order.customerName}! 🍰 Your order for ${order.quantity}x ${order.productName} (${order.weightOrSize}) is confirmed for ${order.deliveryDate} (${order.deliveryTimeSlot}). Total: $currencySymbol${order.totalRevenue}. Thank you! 🧁"
+                        val waIntent = Intent(Intent.ACTION_VIEW).apply {
+                            data = Uri.parse("https://api.whatsapp.com/send?text=" + Uri.encode(greeting))
+                        }
+                        try {
+                            context.startActivity(waIntent)
+                        } catch (e: Exception) {
+                            // ignore
+                        }
+                    },
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.height(28.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text("💬 Send WhatsApp Confirmation", fontSize = 10.sp, color = Color(0xFF15803D), fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
