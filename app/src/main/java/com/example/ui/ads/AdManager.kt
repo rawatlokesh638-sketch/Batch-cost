@@ -2,64 +2,59 @@ package com.example.ui.ads
 
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.net.Uri
 import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-enum class ActiveAdNetwork {
-    BOTH,
-    ADSTERRA,
-    MONETAG
-}
-
 data class AdConfigState(
     val isAdsEnabled: Boolean = true,
-    val adNetwork: ActiveAdNetwork = ActiveAdNetwork.BOTH,
-    val adsterraBannerKey: String = "",
-    val adsterraDirectLink: String = "",
-    val monetagZoneId: String = "11904884",
-    val monetagDomain: String = "3nbf4.com"
+    val banner468x60Key: String = "0e2646541d90aca6dc3d2cd09bc02a41",
+    val nativeBannerKey: String = "edd460171965647f099030c848d0ce48",
+    val popunderScriptUrl: String = "https://pl31001085.profitableratecpmnetwork.com/0a/46/b8/0a46b8ebc82f8e7138db80c9b0781365.js",
+    val socialBarScriptUrl: String = "https://pl31001086.profitableratecpmnetwork.com/23/41/b3/2341b3e281555c9b44ed1d1557374bc3.js",
+    val smartlinkUrl: String = "https://www.profitableratecpmnetwork.com/e2905fw619?key=f95b245bc9c99d1770e9aa518049431b"
 )
 
 object AdManager {
-    private const val PREFS_NAME = "ad_manager_prefs"
+    private const val PREFS_NAME = "adsterra_manager_prefs"
     private const val KEY_ADS_ENABLED = "ads_enabled"
-    private const val KEY_AD_NETWORK = "ad_network"
-    private const val KEY_ADSTERRA_BANNER_KEY = "adsterra_banner_key"
-    private const val KEY_ADSTERRA_DIRECT_LINK = "adsterra_direct_link"
-    private const val KEY_MONETAG_ZONE_ID = "monetag_zone_id"
-    private const val KEY_MONETAG_DOMAIN = "monetag_domain"
+    private const val KEY_BANNER_468X60 = "banner_468x60_key"
+    private const val KEY_NATIVE_BANNER = "native_banner_key"
+    private const val KEY_POPUNDER_URL = "popunder_script_url"
+    private const val KEY_SOCIAL_BAR_URL = "social_bar_script_url"
+    private const val KEY_SMARTLINK_URL = "smartlink_url"
+
+    const val DEFAULT_BANNER_468X60_KEY = "0e2646541d90aca6dc3d2cd09bc02a41"
+    const val DEFAULT_NATIVE_BANNER_KEY = "edd460171965647f099030c848d0ce48"
+    const val DEFAULT_POPUNDER_URL = "https://pl31001085.profitableratecpmnetwork.com/0a/46/b8/0a46b8ebc82f8e7138db80c9b0781365.js"
+    const val DEFAULT_SOCIAL_BAR_URL = "https://pl31001086.profitableratecpmnetwork.com/23/41/b3/2341b3e281555c9b44ed1d1557374bc3.js"
+    const val DEFAULT_SMARTLINK_URL = "https://www.profitableratecpmnetwork.com/e2905fw619?key=f95b245bc9c99d1770e9aa518049431b"
 
     private val _configState = MutableStateFlow(AdConfigState())
     val configState: StateFlow<AdConfigState> = _configState.asStateFlow()
 
     private var isInitialized = false
+    private var lastPopunderTime = 0L
 
     fun init(context: Context) {
         if (isInitialized) return
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val enabled = prefs.getBoolean(KEY_ADS_ENABLED, true)
-        val networkStr = prefs.getString(KEY_AD_NETWORK, ActiveAdNetwork.BOTH.name) ?: ActiveAdNetwork.BOTH.name
-        val network = try {
-            ActiveAdNetwork.valueOf(networkStr)
-        } catch (_: Exception) {
-            ActiveAdNetwork.BOTH
-        }
-        val adsterraKey = prefs.getString(KEY_ADSTERRA_BANNER_KEY, "") ?: ""
-        val adsterraDirect = prefs.getString(KEY_ADSTERRA_DIRECT_LINK, "") ?: ""
-        val monetagZone = prefs.getString(KEY_MONETAG_ZONE_ID, "11904884") ?: "11904884"
-        val monetagDom = prefs.getString(KEY_MONETAG_DOMAIN, "3nbf4.com") ?: "3nbf4.com"
+        val b468 = prefs.getString(KEY_BANNER_468X60, DEFAULT_BANNER_468X60_KEY) ?: DEFAULT_BANNER_468X60_KEY
+        val nativeKey = prefs.getString(KEY_NATIVE_BANNER, DEFAULT_NATIVE_BANNER_KEY) ?: DEFAULT_NATIVE_BANNER_KEY
+        val popunder = prefs.getString(KEY_POPUNDER_URL, DEFAULT_POPUNDER_URL) ?: DEFAULT_POPUNDER_URL
+        val socialBar = prefs.getString(KEY_SOCIAL_BAR_URL, DEFAULT_SOCIAL_BAR_URL) ?: DEFAULT_SOCIAL_BAR_URL
+        val smartlink = prefs.getString(KEY_SMARTLINK_URL, DEFAULT_SMARTLINK_URL) ?: DEFAULT_SMARTLINK_URL
 
         _configState.value = AdConfigState(
             isAdsEnabled = enabled,
-            adNetwork = network,
-            adsterraBannerKey = adsterraKey,
-            adsterraDirectLink = adsterraDirect,
-            monetagZoneId = monetagZone,
-            monetagDomain = monetagDom
+            banner468x60Key = b468,
+            nativeBannerKey = nativeKey,
+            popunderScriptUrl = popunder,
+            socialBarScriptUrl = socialBar,
+            smartlinkUrl = smartlink
         )
         isInitialized = true
     }
@@ -67,67 +62,37 @@ object AdManager {
     fun updateConfig(
         context: Context,
         enabled: Boolean,
-        network: ActiveAdNetwork,
-        adsterraBannerKey: String,
-        adsterraDirectLink: String,
-        monetagZoneId: String,
-        monetagDomain: String
+        banner468x60Key: String,
+        nativeBannerKey: String,
+        popunderScriptUrl: String,
+        socialBarScriptUrl: String,
+        smartlinkUrl: String
     ) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit {
             putBoolean(KEY_ADS_ENABLED, enabled)
-            putString(KEY_AD_NETWORK, network.name)
-            putString(KEY_ADSTERRA_BANNER_KEY, adsterraBannerKey.trim())
-            putString(KEY_ADSTERRA_DIRECT_LINK, adsterraDirectLink.trim())
-            putString(KEY_MONETAG_ZONE_ID, monetagZoneId.trim())
-            putString(KEY_MONETAG_DOMAIN, monetagDomain.trim())
+            putString(KEY_BANNER_468X60, banner468x60Key.trim())
+            putString(KEY_NATIVE_BANNER, nativeBannerKey.trim())
+            putString(KEY_POPUNDER_URL, popunderScriptUrl.trim())
+            putString(KEY_SOCIAL_BAR_URL, socialBarScriptUrl.trim())
+            putString(KEY_SMARTLINK_URL, smartlinkUrl.trim())
         }
 
         _configState.value = AdConfigState(
             isAdsEnabled = enabled,
-            adNetwork = network,
-            adsterraBannerKey = adsterraBannerKey.trim(),
-            adsterraDirectLink = adsterraDirectLink.trim(),
-            monetagZoneId = monetagZoneId.trim(),
-            monetagDomain = monetagDomain.trim()
+            banner468x60Key = banner468x60Key.trim(),
+            nativeBannerKey = nativeBannerKey.trim(),
+            popunderScriptUrl = popunderScriptUrl.trim(),
+            socialBarScriptUrl = socialBarScriptUrl.trim(),
+            smartlinkUrl = smartlinkUrl.trim()
         )
     }
 
     /**
-     * Generates a self-contained HTML page designed for WebView banner rendering.
+     * 1. 468x60 Responsive Banner HTML for Bottom Bar
      */
-    fun buildBannerHtml(state: AdConfigState): String {
-        val adsterraKey = state.adsterraBannerKey.trim()
-        val monetagZone = state.monetagZoneId.trim()
-        val monetagDomain = state.monetagDomain.trim().ifEmpty { "3nbf4.com" }
-
-        val adContent = StringBuilder()
-
-        when (state.adNetwork) {
-            ActiveAdNetwork.ADSTERRA -> {
-                if (adsterraKey.isNotEmpty()) {
-                    adContent.append(buildAdsterraSnippet(adsterraKey))
-                } else {
-                    adContent.append(buildDefaultFallbackAd("Adsterra Banner Ready (Add Banner Key in Settings)"))
-                }
-            }
-            ActiveAdNetwork.MONETAG -> {
-                if (monetagZone.isNotEmpty()) {
-                    adContent.append(buildMonetagSnippet(monetagDomain, monetagZone))
-                } else {
-                    adContent.append(buildDefaultFallbackAd("Monetag Zone $monetagZone Active"))
-                }
-            }
-            ActiveAdNetwork.BOTH -> {
-                if (adsterraKey.isNotEmpty()) {
-                    adContent.append(buildAdsterraSnippet(adsterraKey))
-                } else if (monetagZone.isNotEmpty()) {
-                    adContent.append(buildMonetagSnippet(monetagDomain, monetagZone))
-                } else {
-                    adContent.append(buildDefaultFallbackAd("Bakery Deals & Ads Partner Network Active"))
-                }
-            }
-        }
+    fun buildBanner468x60Html(state: AdConfigState): String {
+        val key = state.banner468x60Key.ifEmpty { DEFAULT_BANNER_468X60_KEY }
 
         return """
             <!DOCTYPE html>
@@ -144,10 +109,61 @@ object AdManager {
                         width: 100%;
                         height: 100%;
                         overflow: hidden;
+                    }
+                    .banner-wrapper {
+                        width: 100%;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        transform: scale(min(1, calc((100vw - 16px) / 468)));
+                        transform-origin: center center;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="banner-wrapper">
+                    <script type="text/javascript">
+                        atOptions = {
+                            'key' : '$key',
+                            'format' : 'iframe',
+                            'height' : 60,
+                            'width' : 468,
+                            'params' : {}
+                        };
+                    </script>
+                    <script type="text/javascript" src="https://www.highrevenueformat.com/$key/invoke.js"></script>
+                </div>
+            </body>
+            </html>
+        """.trimIndent()
+    }
+
+    /**
+     * 2. Native Banner HTML for Dashboard Screen
+     */
+    fun buildNativeBannerHtml(state: AdConfigState): String {
+        val key = state.nativeBannerKey.ifEmpty { DEFAULT_NATIVE_BANNER_KEY }
+
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                <style>
+                    * { box-sizing: border-box; margin: 0; padding: 0; }
+                    body {
+                        background: transparent;
+                        width: 100%;
+                        min-height: 100%;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     }
-                    .banner-container {
+                    #container-$key {
                         width: 100%;
+                        max-width: 100%;
                         display: flex;
                         justify-content: center;
                         align-items: center;
@@ -155,51 +171,62 @@ object AdManager {
                 </style>
             </head>
             <body>
-                <div class="banner-container">
-                    $adContent
-                </div>
+                <div id="container-$key"></div>
+                <script async="async" data-cfasync="false" src="https://pl31537282.profitableratecpmnetwork.com/$key/invoke.js"></script>
             </body>
             </html>
         """.trimIndent()
     }
 
-    private fun buildAdsterraSnippet(key: String): String {
+    /**
+     * 3. Social Bar HTML
+     */
+    fun buildSocialBarHtml(state: AdConfigState): String {
+        val scriptUrl = state.socialBarScriptUrl.ifEmpty { DEFAULT_SOCIAL_BAR_URL }
+
         return """
-            <script type="text/javascript">
-                atOptions = {
-                    'key' : '$key',
-                    'format' : 'iframe',
-                    'height' : 50,
-                    'width' : 320,
-                    'params' : {}
-                };
-            </script>
-            <script type="text/javascript" src="//www.topcreativeformat.com/$key/invoke.js"></script>
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>body { margin:0; padding:0; background:transparent; overflow:hidden; }</style>
+            </head>
+            <body>
+                <script src="$scriptUrl"></script>
+            </body>
+            </html>
         """.trimIndent()
     }
 
-    private fun buildMonetagSnippet(domain: String, zoneId: String): String {
-        return """
-            <script src="https://$domain/act/files/tag.min.js?z=$zoneId" data-cfasync="false" async></script>
-            <div style="font-size: 11px; color: #64748b; padding: 4px; text-align: center;">
-                ✨ Monetag Partner Zone #$zoneId Connected
-            </div>
-        """.trimIndent()
+    /**
+     * 4. Popunder trigger (Controlled frequency: e.g. at most once per 3 minutes after successful action)
+     */
+    fun triggerActionPopunder(context: Context) {
+        if (!_configState.value.isAdsEnabled) return
+        val now = System.currentTimeMillis()
+        // 3 minutes cooldown between popunders
+        if (now - lastPopunderTime < 180_000L) {
+            return
+        }
+        lastPopunderTime = now
+
+        val smartlink = _configState.value.smartlinkUrl.ifEmpty { DEFAULT_SMARTLINK_URL }
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(smartlink)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            // Ignore if browser not available
+        }
     }
 
-    private fun buildDefaultFallbackAd(text: String): String {
-        return """
-            <div style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #1e293b, #0f172a); color: #f8fafc; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 500; border: 1px solid #334155; max-width: 95%;">
-                <span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">AD</span>
-                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">$text</span>
-            </div>
-        """.trimIndent()
-    }
-
-    fun openDirectLink(context: Context, customUrl: String? = null) {
+    /**
+     * 5. Smartlink / Direct Link (Intentional CTA click)
+     */
+    fun openSmartlink(context: Context, customUrl: String? = null) {
         val targetUrl = customUrl?.ifEmpty { null }
-            ?: _configState.value.adsterraDirectLink.ifEmpty { null }
-            ?: "https://github.com/rawatlokesh638-sketch/Batch-cost"
+            ?: _configState.value.smartlinkUrl.ifEmpty { DEFAULT_SMARTLINK_URL }
 
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)).apply {

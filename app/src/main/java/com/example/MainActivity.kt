@@ -594,9 +594,11 @@ class MainActivity : ComponentActivity() {
                                                     onAddNewProduct = { isAddingNewProduct = true },
                                                     onRecordNewOrder = { name, prod, qty, rev, cost, status, delivery ->
                                                         viewModel.recordNewOrder(name, prod, qty, rev, cost, status, delivery)
+                                                        com.example.ui.ads.AdManager.triggerActionPopunder(this@MainActivity)
                                                     },
                                                     onIncrementBatchCount = {
                                                         viewModel.incrementBatchCount()
+                                                        com.example.ui.ads.AdManager.triggerActionPopunder(this@MainActivity)
                                                     },
                                                     onOpenWhatsApp = { showWhatsAppLink = true },
                                                     onOpenVisualScanner = { showVisualScanner = true },

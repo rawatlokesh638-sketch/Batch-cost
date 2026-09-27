@@ -1,14 +1,10 @@
 package com.example.ui.ads
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -17,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Launch
 import androidx.compose.material.icons.filled.Save
@@ -25,7 +20,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,11 +50,11 @@ fun AdSettingsDialog(
     val currentConfig by AdManager.configState.collectAsStateWithLifecycle()
 
     var isEnabled by remember { mutableStateOf(currentConfig.isAdsEnabled) }
-    var selectedNetwork by remember { mutableStateOf(currentConfig.adNetwork) }
-    var adsterraBannerKey by remember { mutableStateOf(currentConfig.adsterraBannerKey) }
-    var adsterraDirectLink by remember { mutableStateOf(currentConfig.adsterraDirectLink) }
-    var monetagZoneId by remember { mutableStateOf(currentConfig.monetagZoneId) }
-    var monetagDomain by remember { mutableStateOf(currentConfig.monetagDomain) }
+    var banner468Key by remember { mutableStateOf(currentConfig.banner468x60Key) }
+    var nativeKey by remember { mutableStateOf(currentConfig.nativeBannerKey) }
+    var popunderUrl by remember { mutableStateOf(currentConfig.popunderScriptUrl) }
+    var socialBarUrl by remember { mutableStateOf(currentConfig.socialBarScriptUrl) }
+    var smartlinkUrl by remember { mutableStateOf(currentConfig.smartlinkUrl) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -77,8 +71,8 @@ fun AdSettingsDialog(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Adsterra & Monetag Ads", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text("Mobile Ads & Monetization Setup", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Adsterra 5-Ad Suite", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Configured & Active in App", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "Close")
@@ -108,7 +102,7 @@ fun AdSettingsDialog(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Show Ads in App", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text("Displays banner & partner offers on all mobiles", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Displays ads on all mobile devices", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(
                             checked = isEnabled,
@@ -118,115 +112,58 @@ fun AdSettingsDialog(
                     }
                 }
 
-                // Network Selector
-                Text("Select Ad Network:", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // 1. Native Banner
+                OutlinedTextField(
+                    value = nativeKey,
+                    onValueChange = { nativeKey = it },
+                    label = { Text("1. Native Banner Key (Dashboard)") },
+                    modifier = Modifier.fillMaxWidth().testTag("native_banner_key_input"),
+                    singleLine = true
+                )
+
+                // 2. 468x60 Banner
+                OutlinedTextField(
+                    value = banner468Key,
+                    onValueChange = { banner468Key = it },
+                    label = { Text("2. 468x60 Banner Key (Bottom Bar)") },
+                    modifier = Modifier.fillMaxWidth().testTag("banner_468_key_input"),
+                    singleLine = true
+                )
+
+                // 3. Smartlink
+                OutlinedTextField(
+                    value = smartlinkUrl,
+                    onValueChange = { smartlinkUrl = it },
+                    label = { Text("3. Smartlink URL (Partner Deals)") },
+                    modifier = Modifier.fillMaxWidth().testTag("smartlink_url_input"),
+                    singleLine = true
+                )
+
+                OutlinedButton(
+                    onClick = { AdManager.openSmartlink(context, smartlinkUrl) },
+                    modifier = Modifier.fillMaxWidth().testTag("test_smartlink_btn")
                 ) {
-                    FilterChip(
-                        selected = selectedNetwork == ActiveAdNetwork.BOTH,
-                        onClick = { selectedNetwork = ActiveAdNetwork.BOTH },
-                        label = { Text("Both") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = selectedNetwork == ActiveAdNetwork.ADSTERRA,
-                        onClick = { selectedNetwork = ActiveAdNetwork.ADSTERRA },
-                        label = { Text("Adsterra") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = selectedNetwork == ActiveAdNetwork.MONETAG,
-                        onClick = { selectedNetwork = ActiveAdNetwork.MONETAG },
-                        label = { Text("Monetag") },
-                        modifier = Modifier.weight(1f)
-                    )
+                    Icon(Icons.Default.Launch, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Test Smartlink (Direct Link)")
                 }
 
-                // Monetag Config Box (Preconfigured with user's sw.js values)
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Monetag Setup (sw.js Connected)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
-                        }
+                // 4. Popunder
+                OutlinedTextField(
+                    value = popunderUrl,
+                    onValueChange = { popunderUrl = it },
+                    label = { Text("4. Popunder Script URL") },
+                    modifier = Modifier.fillMaxWidth().testTag("popunder_url_input"),
+                    singleLine = true
+                )
 
-                        OutlinedTextField(
-                            value = monetagZoneId,
-                            onValueChange = { monetagZoneId = it },
-                            label = { Text("Monetag Zone ID") },
-                            placeholder = { Text("11904884") },
-                            modifier = Modifier.fillMaxWidth().testTag("monetag_zone_id_input"),
-                            singleLine = true
-                        )
-
-                        OutlinedTextField(
-                            value = monetagDomain,
-                            onValueChange = { monetagDomain = it },
-                            label = { Text("Monetag Script Domain") },
-                            placeholder = { Text("3nbf4.com") },
-                            modifier = Modifier.fillMaxWidth().testTag("monetag_domain_input"),
-                            singleLine = true
-                        )
-                    }
-                }
-
-                // Adsterra Config Box
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Adsterra Setup", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.secondary)
-
-                        OutlinedTextField(
-                            value = adsterraBannerKey,
-                            onValueChange = { adsterraBannerKey = it },
-                            label = { Text("Adsterra Banner Key (320x50 / 300x250)") },
-                            placeholder = { Text("e.g. c032ab48df9...") },
-                            modifier = Modifier.fillMaxWidth().testTag("adsterra_banner_key_input"),
-                            singleLine = true
-                        )
-
-                        OutlinedTextField(
-                            value = adsterraDirectLink,
-                            onValueChange = { adsterraDirectLink = it },
-                            label = { Text("Adsterra Direct Link (SmartLink)") },
-                            placeholder = { Text("https://www.profitablecpmrate.com/...") },
-                            modifier = Modifier.fillMaxWidth().testTag("adsterra_direct_link_input"),
-                            singleLine = true
-                        )
-
-                        if (adsterraDirectLink.isNotEmpty()) {
-                            OutlinedButton(
-                                onClick = {
-                                    AdManager.openDirectLink(context, adsterraDirectLink)
-                                },
-                                modifier = Modifier.fillMaxWidth().testTag("test_direct_link_btn")
-                            ) {
-                                Icon(Icons.Default.Launch, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("Test Direct Link Now")
-                            }
-                        }
-                    }
-                }
-
-                // Helpful Guide
-                Text(
-                    text = "💡 Guide: Adsterra se 320x50 banner banakar uska 'Key' daalein aur Direct Link banakar SmartLink daalein. Monetag ka sw.js Zone #$monetagZoneId pehle se configured hai.",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 16.sp
+                // 5. Social Bar
+                OutlinedTextField(
+                    value = socialBarUrl,
+                    onValueChange = { socialBarUrl = it },
+                    label = { Text("5. Social Bar Script URL") },
+                    modifier = Modifier.fillMaxWidth().testTag("social_bar_url_input"),
+                    singleLine = true
                 )
             }
         },
@@ -236,11 +173,11 @@ fun AdSettingsDialog(
                     AdManager.updateConfig(
                         context = context,
                         enabled = isEnabled,
-                        network = selectedNetwork,
-                        adsterraBannerKey = adsterraBannerKey,
-                        adsterraDirectLink = adsterraDirectLink,
-                        monetagZoneId = monetagZoneId,
-                        monetagDomain = monetagDomain
+                        banner468x60Key = banner468Key,
+                        nativeBannerKey = nativeKey,
+                        popunderScriptUrl = popunderUrl,
+                        socialBarScriptUrl = socialBarUrl,
+                        smartlinkUrl = smartlinkUrl
                     )
                     onDismiss()
                 },

@@ -343,6 +343,16 @@ fun DashboardScreen(
             }
         }
 
+        // ADSTERRA NATIVE BANNER CARD
+        item {
+            com.example.ui.ads.AdsterraNativeBannerCard()
+        }
+
+        // ADSTERRA SMARTLINK HIGH-REVENUE PARTNER DEALS
+        item {
+            com.example.ui.ads.AdsterraSmartlinkCard()
+        }
+
         // SECONDARY QUICK TOOLS SECTION
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
