@@ -281,6 +281,14 @@ fun OrdersScreen(
                 }
             }
 
+            // High CPM Partner Deals Card
+            item {
+                com.example.ui.ads.AdsterraSmartlinkCard(
+                    title = "⚡ Wholesale Ingredient Discounts",
+                    subtitle = "Cut material costs: Claim exclusive discounts on bulk packaging, dairy & ovens"
+                )
+            }
+
             // Orders Table / List Cards
             if (filteredOrders.isEmpty()) {
                 item {

@@ -58,7 +58,7 @@ object AdManager {
     }
 
     /**
-     * 1. 468x60 / Responsive Banner HTML for Bottom Bar
+     * 1. 468x60 / Responsive Banner HTML for Bottom Bar (Optimized for High CPM)
      */
     fun buildBanner468x60Html(state: AdConfigState): String {
         val key = OWNER_BANNER_468X60_KEY
@@ -67,10 +67,12 @@ object AdManager {
             <!DOCTYPE html>
             <html>
             <head>
+                <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                <meta name="referrer" content="always">
                 <style>
                     * { box-sizing: border-box; margin: 0; padding: 0; }
-                    body {
+                    html, body {
                         background: transparent;
                         display: flex;
                         align-items: center;
@@ -108,7 +110,7 @@ object AdManager {
     }
 
     /**
-     * 2. Native Banner HTML for Dashboard Screen
+     * 2. Native Banner HTML for Dashboard Screen (Optimized for High CPM & Full Viewability)
      */
     fun buildNativeBannerHtml(state: AdConfigState): String {
         val key = OWNER_NATIVE_BANNER_KEY
@@ -117,10 +119,12 @@ object AdManager {
             <!DOCTYPE html>
             <html>
             <head>
+                <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                <meta name="referrer" content="always">
                 <style>
                     * { box-sizing: border-box; margin: 0; padding: 0; }
-                    body {
+                    html, body {
                         background: transparent;
                         width: 100%;
                         min-height: 100%;
@@ -148,7 +152,7 @@ object AdManager {
     }
 
     /**
-     * 3. Social Bar HTML
+     * 3. Social Bar HTML (Highest CTR & CPM format)
      */
     fun buildSocialBarHtml(state: AdConfigState): String {
         val scriptUrl = OWNER_SOCIAL_BAR_URL
@@ -157,7 +161,9 @@ object AdManager {
             <!DOCTYPE html>
             <html>
             <head>
+                <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <meta name="referrer" content="always">
                 <style>body { margin:0; padding:0; background:transparent; overflow:hidden; }</style>
             </head>
             <body>
@@ -168,12 +174,12 @@ object AdManager {
     }
 
     /**
-     * 4. Popunder trigger (Controlled frequency: e.g. at most once per 2-3 minutes after user action)
+     * 4. Popunder trigger (Optimized cooldown for maximum payout per conversion)
      */
     fun triggerActionPopunder(context: Context) {
         val now = System.currentTimeMillis()
-        // 2 minutes cooldown between popunders to ensure user engagement & high CPM
-        if (now - lastPopunderTime < 120_000L) {
+        // 60-second cooldown between popunders to ensure high advertiser payout and user retention
+        if (now - lastPopunderTime < 60_000L) {
             return
         }
         lastPopunderTime = now
