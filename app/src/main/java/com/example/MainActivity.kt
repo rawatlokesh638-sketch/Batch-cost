@@ -6,6 +6,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,27 +24,44 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Kitchen
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Style
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.BatchCostViewModel
@@ -50,22 +73,10 @@ import com.example.ui.screens.pantry.IngredientsPantryScreen
 import com.example.ui.screens.products.AddEditProductScreen
 import com.example.ui.screens.products.ProductDetailScreen
 import com.example.ui.screens.products.ProductsScreen
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.Style
-import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import com.example.ui.screens.label.LabelGeneratorScreen
 import com.example.ui.screens.orders.OrdersScreen
 import com.example.ui.theme.BatchCostTheme
+import kotlinx.coroutines.launch
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -139,7 +150,6 @@ class MainActivity : ComponentActivity() {
                 var showTeamModal by remember { mutableStateOf(false) }
                 var showAuthModal by remember { mutableStateOf(false) }
                 var showAiAssistantSheet by remember { mutableStateOf(false) }
-                var showMonetizationModal by remember { mutableStateOf(false) }
                 var showWhatsAppLink by remember { mutableStateOf(false) }
                 var showAIParsingConfig by remember { mutableStateOf(false) }
                 var showOrderLinkGen by remember { mutableStateOf(false) }
@@ -312,8 +322,36 @@ class MainActivity : ComponentActivity() {
                                 snackbarHost = { SnackbarHost(snackbarHostState) },
                                 topBar = {
                                     androidx.compose.material3.TopAppBar(
-                                        title = { Text(activeProfile.businessName.ifBlank { "Bakery Cost & Profit Pro" }, fontWeight = FontWeight.Bold) },
+                                        title = {
+                                            Column {
+                                                Text(activeProfile.businessName.ifBlank { "BatchCost Bakery Pro" }, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                                                Text("Real-Time Costing & WhatsApp AI", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                            }
+                                        },
                                         actions = {
+                                            // 1-Tap WhatsApp AI Scanner
+                                            IconButton(
+                                                onClick = { showWhatsAppLink = true }
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Chat,
+                                                    contentDescription = "WhatsApp Order AI",
+                                                    tint = Color(0xFF25D366)
+                                                )
+                                            }
+
+                                            // Camera Bill / Receipt Scanner
+                                            IconButton(
+                                                onClick = { showVisualScanner = true }
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.CameraAlt,
+                                                    contentDescription = "Visual Scanner",
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+
+                                            // Firebase Cloud Sync Indicator & Action
                                             IconButton(
                                                 onClick = {
                                                     scope.launch {
@@ -349,7 +387,6 @@ class MainActivity : ComponentActivity() {
                                                 onOpenTeam = { showTeamModal = true },
                                                 onOpenAuth = { showAuthModal = true },
                                                 onOpenAiAssistant = { showAiAssistantSheet = true },
-                                                onOpenMonetization = { showMonetizationModal = true },
                                                 onOpenWhatsAppLink = { showWhatsAppLink = true },
                                                 onOpenAIParsingConfig = { showAIParsingConfig = true },
                                                 onManualSync = {
@@ -366,6 +403,55 @@ class MainActivity : ComponentActivity() {
                                             )
                                         }
                                     )
+                                },
+                                bottomBar = {
+                                    NavigationBar(
+                                        containerColor = MaterialTheme.colorScheme.surface,
+                                        tonalElevation = 6.dp
+                                    ) {
+                                        val navTabs = listOf(
+                                            Triple(0, "Dashboard", Icons.Default.Dashboard),
+                                            Triple(1, "Products", Icons.Default.Inventory),
+                                            Triple(2, "Orders", Icons.Default.Receipt),
+                                            Triple(4, "Pantry", Icons.Default.Kitchen),
+                                            Triple(5, "Calculator", Icons.Default.Calculate)
+                                        )
+
+                                        navTabs.forEach { (tabIdx, label, icon) ->
+                                            val isSelected = currentTab == tabIdx
+                                            NavigationBarItem(
+                                                selected = isSelected,
+                                                onClick = { viewModel.selectTab(tabIdx) },
+                                                icon = {
+                                                    if (tabIdx == 2 && recordedOrders.isNotEmpty()) {
+                                                        BadgedBox(
+                                                            badge = {
+                                                                Badge(containerColor = MaterialTheme.colorScheme.primary) {
+                                                                    Text("${recordedOrders.size}", color = Color.White)
+                                                                }
+                                                            }
+                                                        ) {
+                                                            Icon(icon, contentDescription = label)
+                                                        }
+                                                    } else {
+                                                        Icon(icon, contentDescription = label)
+                                                    }
+                                                },
+                                                label = {
+                                                    Text(
+                                                        label,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                                    )
+                                                },
+                                                colors = NavigationBarItemDefaults.colors(
+                                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                                                )
+                                            )
+                                        }
+                                    }
                                 }
                             ) { innerPadding ->
                                 Column(
@@ -450,6 +536,15 @@ class MainActivity : ComponentActivity() {
                                     ) {
                                         AnimatedContent(
                                             targetState = currentTab,
+                                            transitionSpec = {
+                                                if (targetState > initialState) {
+                                                    (slideInHorizontally { width -> width / 3 } + fadeIn(animationSpec = tween(200)))
+                                                        .togetherWith(slideOutHorizontally { width -> -width / 3 } + fadeOut(animationSpec = tween(200)))
+                                                } else {
+                                                    (slideInHorizontally { width -> -width / 3 } + fadeIn(animationSpec = tween(200)))
+                                                        .togetherWith(slideOutHorizontally { width -> width / 3 } + fadeOut(animationSpec = tween(200)))
+                                                }
+                                            },
                                             label = "TabContent"
                                         ) { tab ->
                                         when (tab) {
@@ -552,6 +647,8 @@ class MainActivity : ComponentActivity() {
                             }
                             if (showRemindersModal) {
                                 com.example.ui.components.RemindersDialog(
+                                    recordedOrders = recordedOrders,
+                                    currencySymbol = activeProfile.currencySymbol,
                                     onDismiss = { showRemindersModal = false }
                                 )
                             }
@@ -585,13 +682,6 @@ class MainActivity : ComponentActivity() {
                                     recordedOrders = recordedOrders,
                                     currencySymbol = activeProfile.currencySymbol,
                                     onDismiss = { showAiAssistantSheet = false }
-                                )
-                            }
-                            if (showMonetizationModal) {
-                                com.example.ui.components.MonetizationPlansDialog(
-                                    currentPlan = "PRO",
-                                    onDismiss = { showMonetizationModal = false },
-                                    onSelectPlan = { plan -> showMonetizationModal = false }
                                 )
                             }
                         }

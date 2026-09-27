@@ -74,8 +74,8 @@ fun WhatsAppIntegrationScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Autonomous WhatsApp Agent", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("Agent 3.8 Flash • Auto-Pilot Chat Scanner", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("WhatsApp Order Intelligence", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("Gemini 3.8 Flash • Real-Time Order Capture", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 navigationIcon = {
@@ -86,13 +86,18 @@ fun WhatsAppIntegrationScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            WhatsAppOrderCaptureHub.runFullAutonomousCrawlerSimulation(context)
-                            scope.launch {
-                                snackbarHostState.showSnackbar("🤖 Autonomous Crawler started!")
+                            val pm = context.packageManager
+                            val intent = pm.getLaunchIntentForPackage("com.whatsapp")
+                                ?: pm.getLaunchIntentForPackage("com.whatsapp.w4b")
+                                ?: Intent(Intent.ACTION_VIEW, Uri.parse("whatsapp://"))
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                scope.launch { snackbarHostState.showSnackbar("WhatsApp is not installed on this device.") }
                             }
                         }
                     ) {
-                        Icon(Icons.Default.Bolt, contentDescription = "Quick Test", tint = Color(0xFFF59E0B))
+                        Icon(Icons.Default.OpenInNew, contentDescription = "Open WhatsApp", tint = Color(0xFF25D366))
                     }
                 }
             )
@@ -106,128 +111,154 @@ fun WhatsAppIntegrationScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Live Status Banner
+            // Master Setup & Permissions Tutorial Card
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .background(if (isAutoPilotRunning) Color(0xFF10B981) else MaterialTheme.colorScheme.primary, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isAutoPilotRunning) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Default.SmartToy, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
-                        }
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Agent 3.8 Flash", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Spacer(Modifier.width(6.dp))
-                            Surface(
-                                color = if (isAutoPilotRunning) Color(0xFF10B981) else Color(0xFF6B7280),
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Text(
-                                    if (isAutoPilotRunning) "SCANNING CHATS" else "STANDBY",
-                                    color = Color.White,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(2.dp))
-                        Text(agentStatus, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-
-            // Master Auto-Pilot Launcher Card
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F5132)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
                 shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Psychology, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.MenuBook, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+                        }
                         Spacer(Modifier.width(10.dp))
                         Column {
-                            Text("Autonomous Auto-Pilot Scanner", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("Koi screen copy karne ki jaroorat nahi", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        "Agent active hokar apne aap jaldi-jaldi WhatsApp ke sabhi customer chats open karega, cake & bakery orders extract karega aur Order Book me Firebase par save kar dega!",
-                        color = Color.White.copy(alpha = 0.95f),
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp
-                    )
-                    Spacer(Modifier.height(16.dp))
-
-                    if (!isAutoPilotRunning) {
-                        Button(
-                            onClick = {
-                                WhatsAppOrderCaptureHub.startAutoPilot(context)
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("🚀 Agent 3.8 Flash launching WhatsApp crawler!")
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.fillMaxWidth().height(50.dp).testTag("start_autopilot_button")
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
-                            Spacer(Modifier.width(8.dp))
-                            Text("🚀 START WHATSAPP AUTO-PILOT", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 15.sp)
-                        }
-                    } else {
-                        Button(
-                            onClick = {
-                                WhatsAppOrderCaptureHub.stopAutoPilot()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.fillMaxWidth().height(50.dp)
-                        ) {
-                            Icon(Icons.Default.Stop, contentDescription = null, tint = Color.White)
-                            Spacer(Modifier.width(8.dp))
-                            Text("⏹️ STOP AUTO-PILOT", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 15.sp)
+                            Text("📖 WhatsApp Auto-Scan Setup Guide", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+                            Text("Permissions kaise on karein (Step-by-Step)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = {
-                            WhatsAppOrderCaptureHub.runFullAutonomousCrawlerSimulation(context)
-                            scope.launch {
-                                snackbarHostState.showSnackbar("🤖 Simulating multi-chat auto-scan...")
-                            }
-                        },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    HorizontalDivider()
+
+                    // Step 1: Notification Access
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        Icon(Icons.Default.FastForward, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("⚡ Run Multi-Chat Auto-Scan (Direct Live Simulation)", fontSize = 13.sp)
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("1️⃣ Notification Access (WhatsApp Auto-Scanner)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Jab bhi customer WhatsApp par message bhejega, phone ke notification se order automatically scan hokar Order Book me save ho jayega.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text("• Step 1: Neeche button par click karke Notification Settings kholein", fontSize = 11.sp)
+                                Text("• Step 2: List me 'BatchCost' dhoondhein aur toggle switch ON karein", fontSize = 11.sp)
+                                Text("• Step 3: 'Allow' par tap karein", fontSize = 11.sp)
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            Button(
+                                onClick = {
+                                    try {
+                                        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                                    } catch (e: Exception) {
+                                        scope.launch { snackbarHostState.showSnackbar("Notification settings page unavailable") }
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth().height(38.dp)
+                            ) {
+                                Icon(Icons.Default.NotificationsActive, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("⚙️ Open Notification Access Settings", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    // Step 2: Accessibility Service
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("2️⃣ Accessibility Service (Live Chat Screen Auto-Reader)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "WhatsApp screen par aane wale messages ko automatically padhne ke liye Accessibility Service on karein:",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text("• Step 1: 'Open Accessibility Settings' par tap karein", fontSize = 11.sp)
+                                Text("• Step 2: 'Downloaded Apps' ya 'Installed Services' section me jayein", fontSize = 11.sp)
+                                Text("• Step 3: 'BatchCost' select karein aur toggle ON karein", fontSize = 11.sp)
+                                Text("• ⚠️ Android 13/14 Restricted Settings Fix: Agar Android switch dabane na de, toh 'App Info' button dabayein ➔ Top Right 3 dots ➔ 'Allow restricted settings' select karein.", fontSize = 11.sp, color = Color(0xFFD97706), fontWeight = FontWeight.SemiBold)
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        try {
+                                            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                                        } catch (e: Exception) {
+                                            scope.launch { snackbarHostState.showSnackbar("Accessibility settings unavailable") }
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F766E)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f).height(38.dp)
+                                ) {
+                                    Icon(Icons.Default.Accessibility, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("♿ Accessibility", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        try {
+                                            val appInfoIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                                data = Uri.parse("package:" + context.packageName)
+                                            }
+                                            context.startActivity(appInfoIntent)
+                                        } catch (e: Exception) {
+                                            scope.launch { snackbarHostState.showSnackbar("App info page unavailable") }
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f).height(38.dp)
+                                ) {
+                                    Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("ℹ️ App Info", fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    // Step 3: Battery Optimization
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text("3️⃣ Background Battery Optimization (Unrestricted)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Spacer(Modifier.height(4.dp))
+                            Text("App Info ➔ Battery ➔ 'Unrestricted' set karein taaki background me order scanner sleep mode me na jaye.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
 
-            // Real-Time Crawler Terminal Logs
+            // Real-Time Activity Terminal Logs
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
                 shape = RoundedCornerShape(12.dp),
@@ -242,23 +273,20 @@ fun WhatsAppIntegrationScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(8.dp).background(Color(0xFF10B981), CircleShape))
                             Spacer(Modifier.width(8.dp))
-                            Text("Agent 3.8 Flash Activity Terminal", color = Color(0xFFE2E8F0), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-                        if (isAutoPilotRunning) {
-                            Text("LIVE", color = Color(0xFF10B981), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("Agent 3.8 Flash Live Activity Terminal", color = Color(0xFFE2E8F0), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                     Spacer(Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 160.dp)
+                            .heightIn(max = 140.dp)
                             .background(Color(0xFF0F172A), RoundedCornerShape(8.dp))
                             .padding(10.dp)
                     ) {
                         if (crawlerLogs.isEmpty()) {
                             Text(
-                                "No active crawling session. Click 'Start WhatsApp Auto-Pilot' or 'Run Multi-Chat Auto-Scan' above.",
+                                "Live scanner active. Orders will appear here in real-time as they are shared, copied, or imported.",
                                 color = Color(0xFF94A3B8),
                                 fontSize = 11.sp,
                                 fontFamily = FontFamily.Monospace
@@ -268,7 +296,7 @@ fun WhatsAppIntegrationScreen(
                                 crawlerLogs.take(6).forEach { logLine ->
                                     Text(
                                         logLine,
-                                        color = if (logLine.contains("SAVED")) Color(0xFF34D399) else Color(0xFFE2E8F0),
+                                        color = if (logLine.contains("SAVED") || logLine.contains("Finished")) Color(0xFF34D399) else Color(0xFFE2E8F0),
                                         fontSize = 11.sp,
                                         fontFamily = FontFamily.Monospace
                                     )

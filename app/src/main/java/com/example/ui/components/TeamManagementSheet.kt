@@ -62,15 +62,15 @@ enum class TeamRole {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeamManagementSheet(
+    ownerName: String = "Owner",
+    ownerEmail: String = "owner@bakery.com",
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    val teamMembers = remember {
+    val teamMembers = remember(ownerName, ownerEmail) {
         mutableStateListOf(
-            TeamMember("Lokesh Rawat", "rawatlokesh638@gmail.com", TeamRole.OWNER, "Full Access: Billing, Settings, Reports, Products, Orders"),
-            TeamMember("Amit Kumar", "amit@bakery.com", TeamRole.MANAGER, "Can manage Products, Pricing, Orders, and Analytics reports"),
-            TeamMember("Rohan Singh", "rohan@bakery.com", TeamRole.STAFF, "Can create production batches & view assigned task queues")
+            TeamMember(ownerName.ifBlank { "Owner" }, ownerEmail.ifBlank { "owner@bakery.com" }, TeamRole.OWNER, "Full Access: Billing, Settings, Reports, Products, Orders")
         )
     }
 

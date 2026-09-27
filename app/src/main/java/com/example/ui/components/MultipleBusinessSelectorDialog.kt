@@ -57,11 +57,9 @@ fun MultipleBusinessSelectorDialog(
     onDismiss: () -> Unit,
     onSelectBusiness: (BusinessAccount) -> Unit
 ) {
-    val businesses = remember {
+    val businesses = remember(currentBusinessName) {
         mutableListOf(
-            BusinessAccount("b1", "Sweet Crumb Bakery", "Bakery & Confectionery", "₹", 4),
-            BusinessAccount("b2", "Aura Soy Candles", "Handmade Candles & Decor", "₹", 6),
-            BusinessAccount("b3", "Organic Soap Co.", "Bath & Body Essentials", "₹", 5)
+            BusinessAccount("b1", currentBusinessName.ifBlank { "My Bakery Store" }, "Bakery & Food Business", "₹", 1)
         )
     }
 

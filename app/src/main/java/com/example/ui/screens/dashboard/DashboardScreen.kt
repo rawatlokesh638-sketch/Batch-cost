@@ -45,6 +45,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -253,11 +254,100 @@ fun DashboardScreen(
             }
         }
 
-        // QUICK ACTIONS SECTION
+        // PRIMARY 4 CORE ACTIONS GRID
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Quick Actions",
+                    text = "⚡ Core Bakery Actions",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Card(
+                        onClick = onOpenWhatsApp,
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFDCFCE7)),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f).height(105.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp).fillMaxSize(),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("📲 WhatsApp", fontWeight = FontWeight.Bold, color = Color(0xFF15803D), fontSize = 14.sp)
+                                Surface(color = Color(0xFF16A34A), shape = RoundedCornerShape(4.dp)) {
+                                    Text("AI 3.8", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                                }
+                            }
+                            Text("Auto-scan customer orders & notes", fontSize = 11.sp, color = Color(0xFF166534), lineHeight = 14.sp)
+                        }
+                    }
+
+                    Card(
+                        onClick = { showRecordOrderDialog = true },
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f).height(105.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp).fillMaxSize(),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("➕ New Order", fontWeight = FontWeight.Bold, color = Color(0xFF1D4ED8), fontSize = 14.sp)
+                            Text("Record customer order & profit", fontSize = 11.sp, color = Color(0xFF1E40AF), lineHeight = 14.sp)
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Card(
+                        onClick = onAddNewProduct,
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFAF5FF)),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f).height(105.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp).fillMaxSize(),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("🎂 Add Cake / Recipe", fontWeight = FontWeight.Bold, color = Color(0xFF7E22CE), fontSize = 14.sp)
+                            Text("True batch costing & margins", fontSize = 11.sp, color = Color(0xFF6B21A8), lineHeight = 14.sp)
+                        }
+                    }
+
+                    Card(
+                        onClick = onNavigateToBatchCalc,
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f).height(105.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp).fillMaxSize(),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("🧮 Batch Calculator", fontWeight = FontWeight.Bold, color = Color(0xFFB45309), fontSize = 14.sp)
+                            Text("Scale recipes & ingredient yields", fontSize = 11.sp, color = Color(0xFF92400E), lineHeight = 14.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // SECONDARY QUICK TOOLS SECTION
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "🛠️ Smart Bakery Tools",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
 
@@ -267,12 +357,13 @@ fun DashboardScreen(
                 ) {
                     item {
                         QuickActionButton(
-                            label = "🎙️ Quick Add (Offline)",
-                            icon = Icons.Default.Mic,
-                            onClick = { showQuickOfflineOrderDialog = true },
-                            testTag = "action_quick_add_offline"
+                            label = "💬 Ask AI Business Advisor",
+                            icon = Icons.Default.AutoAwesome,
+                            onClick = { showAIAssistantSheet = true },
+                            testTag = "action_ai_assistant"
                         )
                     }
+
                     item {
                         QuickActionButton(
                             label = "📸 Scan Handwritten Bill",
@@ -284,25 +375,7 @@ fun DashboardScreen(
 
                     item {
                         QuickActionButton(
-                            label = "🔗 Share Order Link/QR",
-                            icon = Icons.Default.Link,
-                            onClick = { onOpenOrderLinkGen() },
-                            testTag = "action_order_link_gen"
-                        )
-                    }
-
-                    item {
-                        QuickActionButton(
-                            label = "💬 Ask AI Business Assistant",
-                            icon = Icons.Default.AutoAwesome,
-                            onClick = { showAIAssistantSheet = true },
-                            testTag = "action_ai_assistant"
-                        )
-                    }
-
-                    item {
-                        QuickActionButton(
-                            label = "🤖 AI Recipe & Photo Importer",
+                            label = "🤖 AI Recipe Generator",
                             icon = Icons.Default.AutoAwesome,
                             onClick = { showAIRecipeModal = true },
                             testTag = "action_ai_recipe_importer"
@@ -311,10 +384,19 @@ fun DashboardScreen(
 
                     item {
                         QuickActionButton(
-                            label = "📲 WhatsApp Smart Link",
-                            icon = Icons.Default.QrCode,
-                            onClick = { onOpenWhatsApp() },
-                            testTag = "action_whatsapp_link"
+                            label = "🔗 Order Link & QR",
+                            icon = Icons.Default.Link,
+                            onClick = { onOpenOrderLinkGen() },
+                            testTag = "action_order_link_gen"
+                        )
+                    }
+
+                    item {
+                        QuickActionButton(
+                            label = "🏷️ Create Product Label",
+                            icon = Icons.Default.Label,
+                            onClick = { showCreateLabelModal = true },
+                            testTag = "action_create_label"
                         )
                     }
 
@@ -347,7 +429,7 @@ fun DashboardScreen(
 
                     item {
                         QuickActionButton(
-                            label = "🏪 Multi-Business",
+                            label = "🏪 Multi-Business Switcher",
                             icon = Icons.Default.Storefront,
                             onClick = { showMultiBusinessModal = true },
                             testTag = "action_multi_business"
@@ -360,63 +442,6 @@ fun DashboardScreen(
                             icon = Icons.Default.ShoppingBag,
                             onClick = { showTeamModal = true },
                             testTag = "action_team_accounts"
-                        )
-                    }
-
-                    item {
-                        QuickActionButton(
-                            label = "🔐 Firebase Auth",
-                            icon = Icons.Default.Receipt,
-                            onClick = { showAuthModal = true },
-                            testTag = "action_firebase_auth"
-                        )
-                    }
-
-                    item {
-                        QuickActionButton(
-                            label = "+ Create Batch",
-                            icon = Icons.Default.Calculate,
-                            onClick = {
-                                onIncrementBatchCount()
-                                onNavigateToBatchCalc()
-                            },
-                            testTag = "action_create_batch"
-                        )
-                    }
-
-                    item {
-                        QuickActionButton(
-                            label = "+ Add Product",
-                            icon = Icons.Default.Add,
-                            onClick = onAddNewProduct,
-                            testTag = "action_add_product"
-                        )
-                    }
-
-                    item {
-                        QuickActionButton(
-                            label = "+ Record Order",
-                            icon = Icons.Default.Receipt,
-                            onClick = { showRecordOrderDialog = true },
-                            testTag = "action_record_order"
-                        )
-                    }
-
-                    item {
-                        QuickActionButton(
-                            label = "🏷️ Create Label",
-                            icon = Icons.Default.Label,
-                            onClick = { showCreateLabelModal = true },
-                            testTag = "action_create_label"
-                        )
-                    }
-
-                    item {
-                        QuickActionButton(
-                            label = "📷 Import WhatsApp Order",
-                            icon = Icons.Default.AutoAwesome,
-                            onClick = { showWhatsAppModal = true },
-                            testTag = "action_import_whatsapp"
                         )
                     }
                 }
@@ -635,6 +660,8 @@ fun DashboardScreen(
 
     if (showRemindersModal) {
         com.example.ui.components.RemindersDialog(
+            recordedOrders = recordedOrders,
+            currencySymbol = currencySym,
             onDismiss = { showRemindersModal = false }
         )
     }

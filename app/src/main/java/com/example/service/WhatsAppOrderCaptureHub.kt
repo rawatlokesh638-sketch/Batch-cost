@@ -196,54 +196,6 @@ object WhatsAppOrderCaptureHub {
     }
 
     /**
-     * Autonomous Multi-Chat Crawler Simulation
-     * Automatically iterates through multiple chats in sequence without any user interaction!
-     */
-    fun runFullAutonomousCrawlerSimulation(context: Context? = null) {
-        if (_isAutoPilotRunning.value) return
-        _isAutoPilotRunning.value = true
-
-        scope.launch {
-            addCrawlerLog("🤖 Agent 3.8 Flash Auto-Pilot initializing...")
-            delay(500)
-            addCrawlerLog("📂 Opening WhatsApp chat list...")
-            delay(700)
-
-            val chatQueue = listOf(
-                Pair("Pooja Sharma", "Bhaiya 1kg Dutch Truffle Chocolate Cake kal shaam 6 baje chahiye. Name on cake: 'Happy Birthday Aarav'. Eggless please! Rate kya hoga? Total ₹650 bheju?"),
-                Pair("Rahul Verma", "Need 2 boxes Red Velvet Cupcakes (12 pcs) for office party tomorrow 2 PM. Price ₹450 total na?"),
-                Pair("Ankit Gupta", "Bhai match dekh raha hai kya? Sham ko milte hai."),
-                Pair("Simran Kaur", "Confirm 1 Pineapple Fresh Cream Cake (500g) for today 5:30 PM. Rate ₹380, payment on delivery.")
-            )
-
-            var ordersFoundCount = 0
-
-            for ((index, chat) in chatQueue.withIndex()) {
-                val (contact, text) = chat
-                addCrawlerLog("👉 [${index + 1}/${chatQueue.size}] Auto-opening chat with '$contact'...")
-                delay(1000)
-
-                addCrawlerLog("📜 Scrolling and scanning full chat context with '$contact'...")
-                delay(900)
-
-                // Process message
-                processCapturedWhatsAppMessage(contact, text, "Auto-Pilot Crawler", context)
-                delay(1100)
-
-                if (text.contains("Cake", ignoreCase = true) || text.contains("Cupcakes", ignoreCase = true)) {
-                    ordersFoundCount++
-                }
-
-                addCrawlerLog("↩️ Returning to WhatsApp chat list...")
-                delay(700)
-            }
-
-            addCrawlerLog("🎉 Auto-Pilot Finished! Scanned ${chatQueue.size} chats, Auto-Saved $ordersFoundCount orders to Firebase Cloud in Realtime!")
-            _isAutoPilotRunning.value = false
-        }
-    }
-
-    /**
      * Parses an exported WhatsApp chat file (.txt) and extracts all customer orders using Gemini 3.8 Flash.
      */
     suspend fun processExportedChatContent(

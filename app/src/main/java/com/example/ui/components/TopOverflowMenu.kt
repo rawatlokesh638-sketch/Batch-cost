@@ -43,7 +43,6 @@ fun TopOverflowMenu(
     onOpenTeam: () -> Unit,
     onOpenAuth: () -> Unit,
     onOpenAiAssistant: () -> Unit,
-    onOpenMonetization: () -> Unit,
     onOpenWhatsAppLink: () -> Unit,
     onOpenAIParsingConfig: () -> Unit,
     onManualSync: () -> Unit = {}
@@ -142,11 +141,6 @@ fun TopOverflowMenu(
                 text = { Text("🤖 AI Parsing Rules") },
                 onClick = { expanded = false; onOpenAIParsingConfig() },
                 leadingIcon = { Icon(Icons.Default.SmartToy, contentDescription = null) }
-            )
-            DropdownMenuItem(
-                text = { Text("💳 Plans & Monetization") },
-                onClick = { expanded = false; onOpenMonetization() },
-                leadingIcon = { Icon(Icons.Default.Star, contentDescription = null) }
             )
             DropdownMenuItem(
                 text = { Text("⚙️ Settings") },
