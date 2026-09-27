@@ -219,6 +219,27 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
     private val _savedBatches = MutableStateFlow<List<SavedBatchRecord>>(emptyList())
     val savedBatches: StateFlow<List<SavedBatchRecord>> = _savedBatches.asStateFlow()
 
+    init {
+        com.example.service.WhatsAppOrderCaptureHub.registerOrderRecordedListener { captured ->
+            recordNewOrder(
+                customerName = captured.customerName,
+                productName = captured.productName,
+                qty = captured.quantity,
+                revenue = captured.totalRevenue,
+                cost = 0.0,
+                status = "Confirmed",
+                deliveryDate = captured.deliveryDate,
+                deliveryTimeSlot = captured.deliveryTimeSlot,
+                weightOrSize = captured.weightOrSize,
+                flavor = captured.flavor,
+                isEggless = captured.isEggless,
+                customMessageOnCake = captured.customMessageOnCake,
+                aiExplanation = captured.aiExplanation,
+                rawWhatsAppText = captured.rawText
+            )
+        }
+    }
+
     fun saveNewBatchRecord(productName: String, units: Int, totalCost: Double, sellingPrice: Double, notes: String = "") {
         val costUnit = if (units > 0) totalCost / units else 0.0
         val estProfit = (sellingPrice * units) - totalCost

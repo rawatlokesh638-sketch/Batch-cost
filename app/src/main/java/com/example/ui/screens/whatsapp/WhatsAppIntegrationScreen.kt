@@ -58,13 +58,21 @@ fun WhatsAppIntegrationScreen(
     }
 
     LaunchedEffect(initialSharedText) {
-        if (!initialSharedText.isNullOrBlank()) {
-            WhatsAppOrderCaptureHub.processCapturedWhatsAppMessage(
-                senderName = "Shared Contact",
-                messageText = initialSharedText,
-                source = "Direct Share Sheet",
-                context = context
-            )
+        val text = initialSharedText
+        if (!text.isNullOrBlank()) {
+            if (text.lines().size > 4 || text.contains(" - ") || text.contains(":\n")) {
+                scope.launch {
+                    val count = WhatsAppOrderCaptureHub.processExportedChatContent(text, context)
+                    snackbarHostState.showSnackbar("Scanned WhatsApp Export: $count orders extracted!")
+                }
+            } else {
+                WhatsAppOrderCaptureHub.processCapturedWhatsAppMessage(
+                    senderName = "Shared Contact",
+                    messageText = text,
+                    source = "Direct Share Sheet",
+                    context = context
+                )
+            }
         }
     }
 

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Inventory
@@ -45,6 +46,7 @@ fun TopOverflowMenu(
     onOpenAiAssistant: () -> Unit,
     onOpenWhatsAppLink: () -> Unit,
     onOpenAIParsingConfig: () -> Unit,
+    onOpenAdSettings: () -> Unit = {},
     onManualSync: () -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -141,6 +143,11 @@ fun TopOverflowMenu(
                 text = { Text("🤖 AI Parsing Rules") },
                 onClick = { expanded = false; onOpenAIParsingConfig() },
                 leadingIcon = { Icon(Icons.Default.SmartToy, contentDescription = null) }
+            )
+            DropdownMenuItem(
+                text = { Text("📢 Ads & Monetization") },
+                onClick = { expanded = false; onOpenAdSettings() },
+                leadingIcon = { Icon(Icons.Default.Campaign, contentDescription = null) }
             )
             DropdownMenuItem(
                 text = { Text("⚙️ Settings") },

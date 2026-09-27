@@ -181,6 +181,17 @@ object WhatsAppOrderCaptureHub {
                         // Save into Room DB and Firebase Cloud
                         orderRecordedListener?.invoke(newOrder)
 
+                        // Show system notification to user
+                        context?.let { ctx ->
+                            NotificationHelper.showOrderDetectedNotification(
+                                context = ctx,
+                                customerName = customer,
+                                productName = candidateProduct,
+                                amount = revenue,
+                                deliveryDate = delivery
+                            )
+                        }
+
                         addCrawlerLog("✅ ORDER EXTRACTED: $candidateProduct ($customer, ₹$revenue)")
                         Log.i(TAG, "Bakery order captured: $candidateProduct for $customer ($weight, Eggless: $eggless)")
                     } else {

@@ -97,11 +97,11 @@ class MainActivity : ComponentActivity() {
             com.example.util.GeminiService.init(this)
             if (com.google.firebase.FirebaseApp.getApps(this).isEmpty()) {
                 val options = com.google.firebase.FirebaseOptions.Builder()
-                    .setProjectId("axial-mind-bmbw7")
-                    .setApplicationId("1:803498997787:web:abd330aad4be527dcb60be")
-                    .setApiKey("AIzaSyD50PSKxaQlBjl5f6a9X4H4WnwZlOrYMC4")
-                    .setDatabaseUrl("https://axial-mind-bmbw7-default-rtdb.firebaseio.com")
-                    .setStorageBucket("axial-mind-bmbw7.firebasestorage.app")
+                    .setProjectId("batch-cost")
+                    .setApplicationId("1:211043838761:android:3dbff61106ab84d47d6538")
+                    .setApiKey("AIzaSyDybQAgIgdQMe0HMWm_W4YK9EQk3VifnPM")
+                    .setDatabaseUrl("https://batch-cost-default-rtdb.firebaseio.com")
+                    .setStorageBucket("batch-cost.firebasestorage.app")
                     .build()
                 com.google.firebase.FirebaseApp.initializeApp(this, options)
             }
@@ -154,19 +154,50 @@ class MainActivity : ComponentActivity() {
                 var showAIParsingConfig by remember { mutableStateOf(false) }
                 var showOrderLinkGen by remember { mutableStateOf(false) }
                 var showVisualScanner by remember { mutableStateOf(false) }
+                var showAdSettingsModal by remember { mutableStateOf(false) }
                 var sharedTextFromIntent by remember { mutableStateOf<String?>(null) }
 
                 androidx.compose.runtime.LaunchedEffect(currentIntent) {
                     val it = currentIntent ?: return@LaunchedEffect
-                    if (it.action == android.content.Intent.ACTION_SEND) {
-                        if (it.type?.startsWith("text/") == true) {
-                            val text = it.getStringExtra(android.content.Intent.EXTRA_TEXT)
-                            if (!text.isNullOrBlank()) {
-                                sharedTextFromIntent = text
-                                showWhatsAppLink = true
-                            }
-                        } else if (it.type?.startsWith("image/") == true) {
+                    
+                    val targetTab = it.getIntExtra("NAVIGATE_TO_TAB", -1)
+                    if (targetTab != -1) {
+                        viewModel.selectTab(targetTab)
+                    }
+
+                    if (it.action == android.content.Intent.ACTION_SEND || it.action == android.content.Intent.ACTION_VIEW) {
+                        val mimeType = it.type ?: ""
+                        if (mimeType.startsWith("image/")) {
                             showVisualScanner = true
+                        } else {
+                            // 1. Direct text in EXTRA_TEXT
+                            val extraText = it.getStringExtra(android.content.Intent.EXTRA_TEXT)
+                            if (!extraText.isNullOrBlank()) {
+                                sharedTextFromIntent = extraText
+                                showWhatsAppLink = true
+                            } else {
+                                // 2. Stream URI or data URI (e.g. WhatsApp Chat Export .txt file)
+                                val uri: android.net.Uri? = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                                    it.getParcelableExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java) ?: it.data
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    it.getParcelableExtra(android.content.Intent.EXTRA_STREAM) ?: it.data
+                                }
+
+                                uri?.let { fileUri ->
+                                    try {
+                                        val fileContent = contentResolver.openInputStream(fileUri)?.bufferedReader()?.use { reader ->
+                                            reader.readText()
+                                        }
+                                        if (!fileContent.isNullOrBlank()) {
+                                            sharedTextFromIntent = fileContent
+                                            showWhatsAppLink = true
+                                        }
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("MainActivity", "Error reading shared file URI: ${e.message}")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -389,6 +420,7 @@ class MainActivity : ComponentActivity() {
                                                 onOpenAiAssistant = { showAiAssistantSheet = true },
                                                 onOpenWhatsAppLink = { showWhatsAppLink = true },
                                                 onOpenAIParsingConfig = { showAIParsingConfig = true },
+                                                onOpenAdSettings = { showAdSettingsModal = true },
                                                 onManualSync = {
                                                     scope.launch {
                                                         snackbarHostState.showSnackbar("Syncing to Firebase Cloud...")
@@ -624,6 +656,11 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
+
+                                // Mobile Adsterra & Monetag Bottom Banner (Visible across all main tabs)
+                                com.example.ui.ads.AdBannerBottomBar(
+                                    onOpenSettings = { showAdSettingsModal = true }
+                                )
                             }
                         }
 
@@ -682,6 +719,11 @@ class MainActivity : ComponentActivity() {
                                     recordedOrders = recordedOrders,
                                     currencySymbol = activeProfile.currencySymbol,
                                     onDismiss = { showAiAssistantSheet = false }
+                                )
+                            }
+                            if (showAdSettingsModal) {
+                                com.example.ui.ads.AdSettingsDialog(
+                                    onDismiss = { showAdSettingsModal = false }
                                 )
                             }
                         }
