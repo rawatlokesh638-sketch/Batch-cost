@@ -154,7 +154,6 @@ class MainActivity : ComponentActivity() {
                 var showAIParsingConfig by remember { mutableStateOf(false) }
                 var showOrderLinkGen by remember { mutableStateOf(false) }
                 var showVisualScanner by remember { mutableStateOf(false) }
-                var showAdSettingsModal by remember { mutableStateOf(false) }
                 var sharedTextFromIntent by remember { mutableStateOf<String?>(null) }
 
                 androidx.compose.runtime.LaunchedEffect(currentIntent) {
@@ -420,7 +419,6 @@ class MainActivity : ComponentActivity() {
                                                 onOpenAiAssistant = { showAiAssistantSheet = true },
                                                 onOpenWhatsAppLink = { showWhatsAppLink = true },
                                                 onOpenAIParsingConfig = { showAIParsingConfig = true },
-                                                onOpenAdSettings = { showAdSettingsModal = true },
                                                 onManualSync = {
                                                     scope.launch {
                                                         snackbarHostState.showSnackbar("Syncing to Firebase Cloud...")
@@ -660,9 +658,7 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 // Mobile Adsterra & Monetag Bottom Banner (Visible across all main tabs)
-                                com.example.ui.ads.AdBannerBottomBar(
-                                    onOpenSettings = { showAdSettingsModal = true }
-                                )
+                                com.example.ui.ads.AdBannerBottomBar()
                             }
                         }
 
@@ -721,11 +717,6 @@ class MainActivity : ComponentActivity() {
                                     recordedOrders = recordedOrders,
                                     currencySymbol = activeProfile.currencySymbol,
                                     onDismiss = { showAiAssistantSheet = false }
-                                )
-                            }
-                            if (showAdSettingsModal) {
-                                com.example.ui.ads.AdSettingsDialog(
-                                    onDismiss = { showAdSettingsModal = false }
                                 )
                             }
                         }

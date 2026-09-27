@@ -57,8 +57,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun AdBannerBottomBar(
-    modifier: Modifier = Modifier,
-    onOpenSettings: () -> Unit = {}
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     LaunchedEffect(Unit) {
@@ -99,7 +98,7 @@ fun AdBannerBottomBar(
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "ADSTERRA",
+                        text = "SPONSORED",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -114,20 +113,6 @@ fun AdBannerBottomBar(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                     modifier = Modifier.weight(1f)
                 )
-
-                IconButton(
-                    onClick = onOpenSettings,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .testTag("ad_settings_icon_btn")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Ad Settings",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
             }
 
             Box(

@@ -46,7 +46,6 @@ fun TopOverflowMenu(
     onOpenAiAssistant: () -> Unit,
     onOpenWhatsAppLink: () -> Unit,
     onOpenAIParsingConfig: () -> Unit,
-    onOpenAdSettings: () -> Unit = {},
     onManualSync: () -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -143,11 +142,6 @@ fun TopOverflowMenu(
                 text = { Text("🤖 AI Parsing Rules") },
                 onClick = { expanded = false; onOpenAIParsingConfig() },
                 leadingIcon = { Icon(Icons.Default.SmartToy, contentDescription = null) }
-            )
-            DropdownMenuItem(
-                text = { Text("📢 Ads & Monetization") },
-                onClick = { expanded = false; onOpenAdSettings() },
-                leadingIcon = { Icon(Icons.Default.Campaign, contentDescription = null) }
             )
             DropdownMenuItem(
                 text = { Text("⚙️ Settings") },
