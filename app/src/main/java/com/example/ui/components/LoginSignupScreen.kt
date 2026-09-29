@@ -171,6 +171,22 @@ fun LoginSignupScreen(
                 ) {
                     Text(text = if (isSignUp) "Already have an account? Login" else "New here? Create Account")
                 }
+
+                androidx.compose.material3.HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+
+                androidx.compose.material3.TextButton(
+                    onClick = { onLoginSuccess("guest@batchcost.app") },
+                    modifier = Modifier.fillMaxWidth().height(44.dp)
+                ) {
+                    Text(
+                        text = "🚀 Continue as Guest (Offline Mode)",
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }

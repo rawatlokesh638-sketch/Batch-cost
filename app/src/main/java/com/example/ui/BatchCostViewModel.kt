@@ -219,27 +219,6 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
     private val _savedBatches = MutableStateFlow<List<SavedBatchRecord>>(emptyList())
     val savedBatches: StateFlow<List<SavedBatchRecord>> = _savedBatches.asStateFlow()
 
-    init {
-        com.example.service.WhatsAppOrderCaptureHub.registerOrderRecordedListener { captured ->
-            recordNewOrder(
-                customerName = captured.customerName,
-                productName = captured.productName,
-                qty = captured.quantity,
-                revenue = captured.totalRevenue,
-                cost = 0.0,
-                status = "Confirmed",
-                deliveryDate = captured.deliveryDate,
-                deliveryTimeSlot = captured.deliveryTimeSlot,
-                weightOrSize = captured.weightOrSize,
-                flavor = captured.flavor,
-                isEggless = captured.isEggless,
-                customMessageOnCake = captured.customMessageOnCake,
-                aiExplanation = captured.aiExplanation,
-                rawWhatsAppText = captured.rawText
-            )
-        }
-    }
-
     fun saveNewBatchRecord(productName: String, units: Int, totalCost: Double, sellingPrice: Double, notes: String = "") {
         val costUnit = if (units > 0) totalCost / units else 0.0
         val estProfit = (sellingPrice * units) - totalCost
@@ -511,6 +490,7 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     init {
+        seedSampleDataIfEmpty()
         loadDataFromFirebase()
         syncManager.startRealtimeListener(
             onOrdersLoaded = { orders -> if (orders.isNotEmpty()) _recordedOrders.value = orders },
@@ -538,6 +518,194 @@ class BatchCostViewModel(application: Application) : AndroidViewModel(applicatio
                 aiExplanation = captured.aiExplanation,
                 rawWhatsAppText = captured.rawText
             )
+        }
+    }
+
+    private fun seedSampleDataIfEmpty() {
+        viewModelScope.launch {
+            val existingProfile = profileDao.getBusinessProfileOnce()
+            if (existingProfile == null) {
+                val defaultProfile = BusinessProfileEntity(
+                    id = 1,
+                    businessName = "The Artisan Bakehouse",
+                    ownerName = "Chef Alex",
+                    phone = "+91 98765 43210",
+                    email = "contact@artisanbakehouse.com",
+                    businessType = "Bakery & Cake Studio",
+                    customBusinessType = null,
+                    currencySymbol = "₹",
+                    currencyCode = "INR",
+                    logoIdentifier = "bakery",
+                    address = "14 Baker Street, Central Market",
+                    isOnboardingCompleted = true
+                )
+                profileDao.saveBusinessProfile(defaultProfile)
+            }
+
+            val existingProducts = productDao.getAllProductsSync()
+            if (existingProducts.isEmpty()) {
+                // Product 1: Belgian Chocolate Truffle Cake
+                val p1Id = productDao.insertProduct(
+                    ProductEntity(
+                        name = "Belgian Chocolate Truffle Cake (1 Kg)",
+                        sellingPrice = 850.0,
+                        unit = "Kg",
+                        category = "Cakes",
+                        description = "Rich 55% dark chocolate ganache with moist cocoa sponge",
+                        packagingCost = 35.0,
+                        labourCost = 60.0,
+                        electricityGasCost = 25.0,
+                        otherOverhead = 15.0,
+                        wastagePercent = 3.0
+                    )
+                )
+                recipeIngredientDao.insertRecipeIngredients(
+                    listOf(
+                        RecipeIngredientEntity(productId = p1Id, ingredientName = "Flour (Maida)", purchaseQty = 10.0, purchaseUnit = "kg", purchasePrice = 400.0, usedQty = 250.0, usedUnit = "g"),
+                        RecipeIngredientEntity(productId = p1Id, ingredientName = "Belgian Dark Chocolate 55%", purchaseQty = 1.0, purchaseUnit = "kg", purchasePrice = 850.0, usedQty = 300.0, usedUnit = "g"),
+                        RecipeIngredientEntity(productId = p1Id, ingredientName = "Whipping Cream", purchaseQty = 1.0, purchaseUnit = "L", purchasePrice = 320.0, usedQty = 250.0, usedUnit = "ml"),
+                        RecipeIngredientEntity(productId = p1Id, ingredientName = "Caster Sugar", purchaseQty = 5.0, purchaseUnit = "kg", purchasePrice = 250.0, usedQty = 200.0, usedUnit = "g"),
+                        RecipeIngredientEntity(productId = p1Id, ingredientName = "Unsalted Butter", purchaseQty = 500.0, purchaseUnit = "g", purchasePrice = 280.0, usedQty = 100.0, usedUnit = "g"),
+                        RecipeIngredientEntity(productId = p1Id, ingredientName = "Cocoa Powder", purchaseQty = 500.0, purchaseUnit = "g", purchasePrice = 350.0, usedQty = 40.0, usedUnit = "g")
+                    )
+                )
+
+                // Product 2: Red Velvet Cupcakes Box of 6
+                val p2Id = productDao.insertProduct(
+                    ProductEntity(
+                        name = "Red Velvet Cupcakes (Box of 6)",
+                        sellingPrice = 480.0,
+                        unit = "Box",
+                        category = "Cupcakes",
+                        description = "Classic red velvet with Madagascar vanilla cream cheese frosting",
+                        packagingCost = 25.0,
+                        labourCost = 40.0,
+                        electricityGasCost = 15.0,
+                        otherOverhead = 10.0,
+                        wastagePercent = 2.0
+                    )
+                )
+                recipeIngredientDao.insertRecipeIngredients(
+                    listOf(
+                        RecipeIngredientEntity(productId = p2Id, ingredientName = "Flour (Maida)", purchaseQty = 10.0, purchaseUnit = "kg", purchasePrice = 400.0, usedQty = 180.0, usedUnit = "g"),
+                        RecipeIngredientEntity(productId = p2Id, ingredientName = "Cream Cheese", purchaseQty = 1.0, purchaseUnit = "kg", purchasePrice = 650.0, usedQty = 150.0, usedUnit = "g"),
+                        RecipeIngredientEntity(productId = p2Id, ingredientName = "Caster Sugar", purchaseQty = 5.0, purchaseUnit = "kg", purchasePrice = 250.0, usedQty = 150.0, usedUnit = "g"),
+                        RecipeIngredientEntity(productId = p2Id, ingredientName = "Unsalted Butter", purchaseQty = 500.0, purchaseUnit = "g", purchasePrice = 280.0, usedQty = 80.0, usedUnit = "g")
+                    )
+                )
+
+                // Product 3: Artisan Sourdough Loaf
+                val p3Id = productDao.insertProduct(
+                    ProductEntity(
+                        name = "Artisan Sourdough Loaf (750g)",
+                        sellingPrice = 240.0,
+                        unit = "Loaf",
+                        category = "Breads",
+                        description = "36-hour cold fermented wild yeast crusty sourdough bread",
+                        packagingCost = 12.0,
+                        labourCost = 35.0,
+                        electricityGasCost = 25.0,
+                        otherOverhead = 8.0,
+                        wastagePercent = 1.0
+                    )
+                )
+                recipeIngredientDao.insertRecipeIngredients(
+                    listOf(
+                        RecipeIngredientEntity(productId = p3Id, ingredientName = "Bread Flour (High Protein)", purchaseQty = 25.0, purchaseUnit = "kg", purchasePrice = 1250.0, usedQty = 500.0, usedUnit = "g"),
+                        RecipeIngredientEntity(productId = p3Id, ingredientName = "Sourdough Starter", purchaseQty = 1.0, purchaseUnit = "kg", purchasePrice = 100.0, usedQty = 100.0, usedUnit = "g"),
+                        RecipeIngredientEntity(productId = p3Id, ingredientName = "Sea Salt", purchaseQty = 1.0, purchaseUnit = "kg", purchasePrice = 60.0, usedQty = 10.0, usedUnit = "g")
+                    )
+                )
+
+                // Seed Master Ingredients into Pantry
+                val masterIngs = listOf(
+                    MasterIngredientEntity(name = "Flour (Maida)", purchaseQty = 10.0, purchaseUnit = "kg", purchasePrice = 400.0, category = "Dry Ingredients"),
+                    MasterIngredientEntity(name = "Belgian Dark Chocolate 55%", purchaseQty = 1.0, purchaseUnit = "kg", purchasePrice = 850.0, category = "Chocolates"),
+                    MasterIngredientEntity(name = "Whipping Cream", purchaseQty = 1.0, purchaseUnit = "L", purchasePrice = 320.0, category = "Dairy"),
+                    MasterIngredientEntity(name = "Caster Sugar", purchaseQty = 5.0, purchaseUnit = "kg", purchasePrice = 250.0, category = "Sweeteners"),
+                    MasterIngredientEntity(name = "Unsalted Butter", purchaseQty = 500.0, purchaseUnit = "g", purchasePrice = 280.0, category = "Fats"),
+                    MasterIngredientEntity(name = "Cocoa Powder", purchaseQty = 500.0, purchaseUnit = "g", purchasePrice = 350.0, category = "Dry Ingredients"),
+                    MasterIngredientEntity(name = "Cream Cheese", purchaseQty = 1.0, purchaseUnit = "kg", purchasePrice = 650.0, category = "Dairy"),
+                    MasterIngredientEntity(name = "Bread Flour (High Protein)", purchaseQty = 25.0, purchaseUnit = "kg", purchasePrice = 1250.0, category = "Dry Ingredients"),
+                    MasterIngredientEntity(name = "Madagascar Vanilla Extract", purchaseQty = 100.0, purchaseUnit = "ml", purchasePrice = 280.0, category = "Flavors"),
+                    MasterIngredientEntity(name = "Premium Cake Box (1 Kg)", purchaseQty = 50.0, purchaseUnit = "piece", purchasePrice = 1250.0, category = "Packaging")
+                )
+                masterIngs.forEach { masterIngredientDao.insertMasterIngredient(it) }
+
+                // Seed Sample Orders
+                if (_recordedOrders.value.isEmpty()) {
+                    _recordedOrders.value = listOf(
+                        RecordedOrder(
+                            customerName = "Priya Sharma",
+                            productName = "Belgian Chocolate Truffle Cake (1 Kg)",
+                            quantity = 1,
+                            weightOrSize = "1 Kg",
+                            flavor = "Dark Truffle",
+                            isEggless = true,
+                            customMessageOnCake = "Happy Birthday Aarav!",
+                            totalRevenue = 850.0,
+                            totalCost = 485.0,
+                            status = "Confirmed",
+                            deliveryDate = "Tomorrow 6:00 PM"
+                        ),
+                        RecordedOrder(
+                            customerName = "Rohan Mehta",
+                            productName = "Red Velvet Cupcakes (Box of 6)",
+                            quantity = 2,
+                            weightOrSize = "2 Boxes",
+                            flavor = "Red Velvet",
+                            isEggless = false,
+                            customMessageOnCake = "Congrats on the new home!",
+                            totalRevenue = 960.0,
+                            totalCost = 540.0,
+                            status = "In Oven",
+                            deliveryDate = "Today 5:30 PM"
+                        ),
+                        RecordedOrder(
+                            customerName = "Cafe Bistro 9",
+                            productName = "Artisan Sourdough Loaf (750g)",
+                            quantity = 5,
+                            weightOrSize = "750g x 5",
+                            flavor = "Wild Yeast Sourdough",
+                            isEggless = true,
+                            customMessageOnCake = "",
+                            totalRevenue = 1200.0,
+                            totalCost = 650.0,
+                            status = "Delivered",
+                            deliveryDate = "Today 9:00 AM"
+                        )
+                    )
+                }
+
+                // Seed Sample Saved Batches
+                if (_savedBatches.value.isEmpty()) {
+                    _savedBatches.value = listOf(
+                        SavedBatchRecord(
+                            productName = "Belgian Chocolate Truffle Cake",
+                            date = "28 Sep 2026",
+                            unitsProduced = 10,
+                            totalCost = 4850.0,
+                            costPerUnit = 485.0,
+                            sellingPricePerUnit = 850.0,
+                            estimatedProfit = 3650.0,
+                            ingredientsSummary = "Flour, Dark Chocolate, Whipping Cream, Butter, Sugar, Cocoa",
+                            notes = "Weekend catering batch run (10 cakes)"
+                        ),
+                        SavedBatchRecord(
+                            productName = "Red Velvet Cupcakes",
+                            date = "27 Sep 2026",
+                            unitsProduced = 24,
+                            totalCost = 2160.0,
+                            costPerUnit = 90.0,
+                            sellingPricePerUnit = 160.0,
+                            estimatedProfit = 1680.0,
+                            ingredientsSummary = "Flour, Cream Cheese, Sugar, Butter, Buttermilk",
+                            notes = "4 Boxes of 6 cupcakes"
+                        )
+                    )
+                    _batchCount.value = 2
+                }
+            }
         }
     }
 

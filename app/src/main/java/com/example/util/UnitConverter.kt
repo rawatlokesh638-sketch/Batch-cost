@@ -83,6 +83,28 @@ object UnitConverter {
     }
 
     val COMMON_UNITS = listOf(
-        "kg", "g", "l", "ml", "Piece", "Box", "Pack", "Dozen", "tsp", "tbsp", "Cup"
+        "g", "kg", "mg", "ml", "L", "piece", "dozen", "packet", "box", "cup", "tbsp", "tsp", "jar", "slice"
     )
+
+    /**
+     * Returns a clear, human-readable transparent math string for recipe ingredient costing.
+     * E.g. "250 g × ₹80.00 / 1 kg = ₹20.00"
+     */
+    fun formatCalculationSteps(
+        purchaseQty: Double,
+        purchaseUnit: String,
+        purchasePrice: Double,
+        usedQty: Double,
+        usedUnit: String,
+        currencySymbol: String
+    ): String {
+        val cost = calculateCost(purchaseQty, purchaseUnit, purchasePrice, usedQty, usedUnit)
+        val df = java.text.DecimalFormat("#,##0.##")
+        val costStr = CurrencyFormatter.format(cost, currencySymbol)
+        val pPriceStr = CurrencyFormatter.format(purchasePrice, currencySymbol)
+        val pQtyStr = df.format(purchaseQty)
+        val uQtyStr = df.format(usedQty)
+
+        return "$uQtyStr $usedUnit × $pPriceStr / $pQtyStr $purchaseUnit = $costStr"
+    }
 }

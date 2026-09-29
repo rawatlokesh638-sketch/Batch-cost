@@ -343,19 +343,9 @@ fun DashboardScreen(
             }
         }
 
-        // ADSTERRA NATIVE BANNER CARD
+        // SPONSORED PARTNER BANNER
         item {
             com.example.ui.ads.AdsterraNativeBannerCard()
-        }
-
-        // ADSTERRA SOCIAL BAR (Adsterra's highest CTR & eCPM format)
-        item {
-            com.example.ui.ads.AdsterraSocialBarWidget()
-        }
-
-        // ADSTERRA SMARTLINK HIGH-REVENUE PARTNER DEALS
-        item {
-            com.example.ui.ads.AdsterraSmartlinkCard()
         }
 
         // SECONDARY QUICK TOOLS SECTION

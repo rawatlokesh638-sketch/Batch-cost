@@ -39,13 +39,21 @@ Stop guessing your food costs and profit margins! BatchCost Pro automatically ca
 
 ⭐ KEY FEATURES:
 
-🎂 Smart Recipe & Batch Cost Calculator
-• Calculate accurate cost per unit, batch, or slice with raw ingredient math.
-• Factor in packaging, labor time, electricity, gas, and wastage percentages.
-• Automatically get recommended selling prices based on your target profit margin (e.g., 40%, 60%, 100%).
+🎂 Interactive Recipe & Batch Cost Sheet Builder
+• Build custom batches from scratch or scale saved catalog recipes with exact yields.
+• Real-time unit conversions across Mass (kg, g, mg), Volume (L, ml, cup, tbsp, tsp), and Count (piece, dozen, packet, box).
+• Transparent step-by-step mathematical breakdown for every single ingredient.
+• Comprehensive overhead allocation: Packaging, Labor hours, Oven electricity/gas, Delivery, and Wastage %.
+• Accurate unit cost calculation: Total Batch Cost ÷ Number of Units.
+
+💰 Margin vs Markup & GST Tax Calculator
+• Distinguish true Profit Margin % (on revenue) from Markup % (on cost) with visual guidance.
+• Integrated FSSAI / GST Tax Engine supporting 0%, 5%, 12%, and 18% tax slabs.
+• Toggle between Tax-Inclusive and Tax-Exclusive pricing modes with itemized CGST + SGST breakdown.
+• Instant 1-tap Cost Sheet export and WhatsApp sharing for kitchen teams and clients.
 
 📲 WhatsApp & Diary Order Scanner
-• Seamlessly scan handwritten order diaries or WhatsApp chat messages using smart scanning.
+• Seamlessly scan handwritten order diaries or WhatsApp chat messages using camera and smart text recognition.
 • Automatically extracts customer name, product ordered, quantity, and delivery date into your order book.
 
 📦 Real-Time Pantry & Inventory Management

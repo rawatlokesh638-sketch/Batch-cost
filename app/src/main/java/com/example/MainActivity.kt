@@ -587,16 +587,14 @@ class MainActivity : ComponentActivity() {
                                                     batchCount = batchCount,
                                                     parsingConfig = config,
                                                     onNavigateToProducts = { viewModel.selectTab(1) },
-                                                    onNavigateToBatchCalc = { viewModel.selectTab(3) },
+                                                    onNavigateToBatchCalc = { viewModel.selectTab(5) },
                                                     onSelectProduct = { id -> viewModel.selectProductForDetail(id) },
                                                     onAddNewProduct = { isAddingNewProduct = true },
                                                     onRecordNewOrder = { name, prod, qty, rev, cost, status, delivery ->
                                                         viewModel.recordNewOrder(name, prod, qty, rev, cost, status, delivery)
-                                                        com.example.ui.ads.AdManager.triggerActionPopunder(this@MainActivity)
                                                     },
                                                     onIncrementBatchCount = {
                                                         viewModel.incrementBatchCount()
-                                                        com.example.ui.ads.AdManager.triggerActionPopunder(this@MainActivity)
                                                     },
                                                     onOpenWhatsApp = { showWhatsAppLink = true },
                                                     onOpenVisualScanner = { showVisualScanner = true },
@@ -635,6 +633,7 @@ class MainActivity : ComponentActivity() {
                                                 products = productsWithDetails,
                                                 currencySymbol = activeProfile.currencySymbol,
                                                 savedBatches = savedBatches,
+                                                masterIngredients = masterIngredients,
                                                 onSaveBatchRecord = { name, units, cost, price, notes ->
                                                     viewModel.saveNewBatchRecord(name, units, cost, price, notes)
                                                 },

@@ -174,25 +174,10 @@ object AdManager {
     }
 
     /**
-     * 4. Popunder trigger (Optimized cooldown for maximum payout per conversion)
+     * 4. Popunder trigger - Safely disabled to comply with App Store quality policies
      */
     fun triggerActionPopunder(context: Context) {
-        val now = System.currentTimeMillis()
-        // 60-second cooldown between popunders to ensure high advertiser payout and user retention
-        if (now - lastPopunderTime < 60_000L) {
-            return
-        }
-        lastPopunderTime = now
-
-        val smartlink = OWNER_SMARTLINK_URL
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(smartlink)).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-        } catch (_: Exception) {
-            // Ignore if browser not available
-        }
+        // Disabled to prevent unwanted external popups and store rejection
     }
 
     /**

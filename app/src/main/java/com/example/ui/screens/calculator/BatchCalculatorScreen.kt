@@ -73,13 +73,14 @@ fun BatchCalculatorScreen(
     products: List<ProductWithDetails>,
     currencySymbol: String,
     savedBatches: List<SavedBatchRecord> = emptyList(),
+    masterIngredients: List<com.example.data.local.entity.MasterIngredientEntity> = emptyList(),
     onSaveBatchRecord: ((String, Int, Double, Double, String) -> Unit)? = null,
     onDuplicateBatchRecord: ((String, Int) -> Unit)? = null,
     onDeleteBatchRecord: ((String) -> Unit)? = null,
     onSaveBatch: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    var activeSubTab by remember { mutableIntStateOf(0) } // 0: Scaler, 1: Price, 2: Profit, 3: History
+    var activeSubTab by remember { mutableIntStateOf(0) } // 0: New Batch, 1: Scaler, 2: Price, 3: Profit, 4: History
 
     var selectedProductIndex by remember { mutableIntStateOf(0) }
     var batchSizeText by remember { mutableStateOf("") }
@@ -102,49 +103,65 @@ fun BatchCalculatorScreen(
                 .padding(innerPadding)
         ) {
             // Segmented Sub-Tab Toggle
-            TabRow(
+            androidx.compose.material3.ScrollableTabRow(
                 selectedTabIndex = activeSubTab,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                edgePadding = 4.dp
             ) {
                 Tab(
                     selected = activeSubTab == 0,
                     onClick = { activeSubTab = 0 },
-                    text = { Text("🧮 Scaler", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
-                    modifier = Modifier.testTag("subtab_batch_scaler")
+                    text = { Text("🧮 New Batch", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
+                    modifier = Modifier.testTag("subtab_new_batch")
                 )
                 Tab(
                     selected = activeSubTab == 1,
                     onClick = { activeSubTab = 1 },
-                    text = { Text("💰 Price", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
-                    modifier = Modifier.testTag("subtab_price_calc")
+                    text = { Text("⚡ Scaler", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
+                    modifier = Modifier.testTag("subtab_batch_scaler")
                 )
                 Tab(
                     selected = activeSubTab == 2,
                     onClick = { activeSubTab = 2 },
-                    text = { Text("📊 Profit", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
-                    modifier = Modifier.testTag("subtab_profit_calc")
+                    text = { Text("💰 Price", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
+                    modifier = Modifier.testTag("subtab_price_calc")
                 )
                 Tab(
                     selected = activeSubTab == 3,
                     onClick = { activeSubTab = 3 },
+                    text = { Text("📊 Profit", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
+                    modifier = Modifier.testTag("subtab_profit_calc")
+                )
+                Tab(
+                    selected = activeSubTab == 4,
+                    onClick = { activeSubTab = 4 },
                     text = { Text("📈 History (${savedBatches.size})", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     modifier = Modifier.testTag("subtab_batch_history")
                 )
             }
 
             when (activeSubTab) {
-                1 -> SellingPriceCalculatorScreen(
+                0 -> InteractiveBatchCostSheetScreen(
+                    currencySymbol = currencySymbol,
+                    products = products,
+                    masterIngredients = masterIngredients,
+                    onSaveBatchRecord = { name, units, cost, price, notes ->
+                        onSaveBatchRecord?.invoke(name, units, cost, price, notes)
+                        onSaveBatch?.invoke()
+                    }
+                )
+                2 -> SellingPriceCalculatorScreen(
                     products = products,
                     currencySymbol = currencySymbol
                 )
-                2 -> RealisticProfitCalculatorScreen(
+                3 -> RealisticProfitCalculatorScreen(
                     products = products,
                     currencySymbol = currencySymbol
                 )
-                3 -> {
+                4 -> {
                     // Batch History Screen View
                     LazyColumn(
                         modifier = Modifier
