@@ -45,12 +45,14 @@ android {
 
   buildTypes {
     release {
+      isDebuggable = false
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
     }
     debug {
+      isDebuggable = true
       isMinifyEnabled = false
       signingConfig = signingConfigs.getByName("debugConfig")
     }
@@ -116,7 +118,7 @@ dependencies {
   // implementation(libs.androidx.credentials.play.services)
   // implementation(libs.googleid)
   implementation(libs.firebase.appcheck.recaptcha)
-  implementation(libs.firebase.appcheck.debug)
+  debugImplementation(libs.firebase.appcheck.debug)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.logging.interceptor)

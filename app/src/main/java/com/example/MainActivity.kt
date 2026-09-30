@@ -105,10 +105,16 @@ class MainActivity : ComponentActivity() {
                     .build()
                 com.google.firebase.FirebaseApp.initializeApp(this, options)
             }
-            val firebaseAppCheck = com.google.firebase.appcheck.FirebaseAppCheck.getInstance()
-            firebaseAppCheck.installAppCheckProviderFactory(
-                com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory.getInstance()
-            )
+            if (BuildConfig.DEBUG) {
+                try {
+                    val debugFactoryClass = Class.forName("com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory")
+                    val getInstanceMethod = debugFactoryClass.getMethod("getInstance")
+                    val factory = getInstanceMethod.invoke(null) as? com.google.firebase.appcheck.AppCheckProviderFactory
+                    if (factory != null) {
+                        com.google.firebase.appcheck.FirebaseAppCheck.getInstance().installAppCheckProviderFactory(factory)
+                    }
+                } catch (ignored: Exception) {}
+            }
         } catch (e: Exception) {
             // Log or handle error if needed
         }
