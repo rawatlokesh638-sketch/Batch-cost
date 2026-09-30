@@ -1,15 +1,12 @@
 package com.example.service
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.util.Log
 import com.example.ui.AIParsingConfig
 import com.example.util.GeminiService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -35,7 +32,7 @@ data class CapturedWhatsAppOrder(
     val notes: String = "",
     val rawText: String = "",
     val aiExplanation: String = "",
-    val source: String = "Auto-Pilot Crawler", // "Auto-Pilot Crawler", "Notification", "Live Screen", "Manual"
+    val source: String = "WhatsApp Direct Share", // "WhatsApp Direct Share", "Cloud API Webhook", "Chat Export", "Manual"
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -52,23 +49,13 @@ object WhatsAppOrderCaptureHub {
     private val _orderDetectedEvents = MutableSharedFlow<CapturedWhatsAppOrder>(extraBufferCapacity = 64)
     val orderDetectedEvents: SharedFlow<CapturedWhatsAppOrder> = _orderDetectedEvents.asSharedFlow()
 
-    private val _agentActiveStatus = MutableStateFlow("🟢 Agent 3.8 Flash Standing By (Auto-Pilot Ready)")
+    private val _agentActiveStatus = MutableStateFlow("🟢 WhatsApp Order Engine Ready (Cloud API & Direct Share)")
     val agentActiveStatus: StateFlow<String> = _agentActiveStatus.asStateFlow()
 
-    // Auto-Pilot Autonomous Crawler State
-    private val _isAutoPilotRunning = MutableStateFlow(false)
-    val isAutoPilotRunning: StateFlow<Boolean> = _isAutoPilotRunning.asStateFlow()
-
-    private val _crawlerLogs = MutableStateFlow<List<String>>(emptyList())
-    val crawlerLogs: StateFlow<List<String>> = _crawlerLogs.asStateFlow()
-
-    private val _skippedNonWorkCount = MutableStateFlow(0)
-    val skippedNonWorkCount: StateFlow<Int> = _skippedNonWorkCount.asStateFlow()
+    private val _syncLogs = MutableStateFlow<List<String>>(emptyList())
+    val syncLogs: StateFlow<List<String>> = _syncLogs.asStateFlow()
 
     var parsingConfig: AIParsingConfig = AIParsingConfig()
-
-    // Visited contacts during active session
-    val visitedContacts = java.util.Collections.synchronizedSet(mutableSetOf<String>())
 
     // Listener hook for ViewModel to insert order into DB & Firebase
     private var orderRecordedListener: ((CapturedWhatsAppOrder) -> Unit)? = null
@@ -81,41 +68,15 @@ object WhatsAppOrderCaptureHub {
         orderRecordedListener = null
     }
 
-    fun addCrawlerLog(msg: String) {
+    fun addSyncLog(msg: String) {
         val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
-        _crawlerLogs.value = listOf("[$time] $msg") + _crawlerLogs.value.take(50)
+        _syncLogs.value = listOf("[$time] $msg") + _syncLogs.value.take(50)
         _agentActiveStatus.value = msg
-        Log.d(TAG, "Crawler: $msg")
+        Log.d(TAG, "Sync: $msg")
     }
 
     /**
-     * Start the Autonomous Auto-Pilot crawler on the user's phone.
-     */
-    fun startAutoPilot(context: Context) {
-        _isAutoPilotRunning.value = true
-        visitedContacts.clear()
-        addCrawlerLog("🚀 Agent 3.8 Flash Auto-Pilot started: Launching WhatsApp...")
-
-        try {
-            val pm = context.packageManager
-            val launchIntent = pm.getLaunchIntentForPackage("com.whatsapp")
-                ?: pm.getLaunchIntentForPackage("com.whatsapp.w4b")
-                ?: Intent(Intent.ACTION_VIEW, Uri.parse("whatsapp://"))
-            context.startActivity(launchIntent)
-            addCrawlerLog("📱 WhatsApp opened. Autonomous crawler inspecting chat screens & message context...")
-        } catch (e: Exception) {
-            addCrawlerLog("⚠️ Could not open WhatsApp: ${e.localizedMessage}")
-            _isAutoPilotRunning.value = false
-        }
-    }
-
-    fun stopAutoPilot() {
-        _isAutoPilotRunning.value = false
-        addCrawlerLog("⏹️ Auto-Pilot stopped.")
-    }
-
-    /**
-     * Process message captured automatically from Notification, Accessibility, or Crawler.
+     * Process message captured via Official Cloud API, Direct Share, or Text Paste
      */
     fun processCapturedWhatsAppMessage(
         senderName: String,
@@ -133,7 +94,7 @@ object WhatsAppOrderCaptureHub {
             processedHashes.add(hash)
         }
 
-        addCrawlerLog("⚡ Scanning message from '$senderName' with Agent 3.8 Flash...")
+        addSyncLog("⚡ Parsing incoming message from '$senderName' ($source)...")
 
         scope.launch {
             try {
@@ -155,7 +116,7 @@ object WhatsAppOrderCaptureHub {
                         val revenue = json.optDouble("totalRevenue", 0.0)
                         val delivery = json.optString("deliveryDate", "Tomorrow").ifBlank { "Tomorrow" }
                         val timeSlot = json.optString("deliveryTimeSlot", "Evening").ifBlank { "Evening" }
-                        val notes = json.optString("notes", "Auto-captured via $source")
+                        val notes = json.optString("notes", "Captured via $source")
                         val explanation = json.optString("aiExplanation", "Identified as bakery order for $candidateProduct")
 
                         val newOrder = CapturedWhatsAppOrder(
@@ -192,22 +153,21 @@ object WhatsAppOrderCaptureHub {
                             )
                         }
 
-                        addCrawlerLog("✅ ORDER EXTRACTED: $candidateProduct ($customer, ₹$revenue)")
+                        addSyncLog("✅ ORDER EXTRACTED: $candidateProduct ($customer, ₹$revenue)")
                         Log.i(TAG, "Bakery order captured: $candidateProduct for $customer ($weight, Eggless: $eggless)")
                     } else {
-                        _skippedNonWorkCount.value += 1
-                        addCrawlerLog("🛡️ Non-Bakery message skipped from '$senderName' (Casual chat / non-work)")
+                        addSyncLog("🛡️ Non-Bakery message skipped from '$senderName' (No active order items found)")
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed scanning captured WhatsApp message", e)
-                addCrawlerLog("⚠️ Scan error: ${e.localizedMessage}")
+                Log.e(TAG, "Failed parsing incoming WhatsApp message", e)
+                addSyncLog("⚠️ Parsing error: ${e.localizedMessage}")
             }
         }
     }
 
     /**
-     * Parses an exported WhatsApp chat file (.txt) and extracts all customer orders using Gemini 3.8 Flash.
+     * Parses an exported WhatsApp chat file (.txt) and extracts all customer orders using Gemini.
      */
     suspend fun processExportedChatContent(
         fileContent: String,
@@ -233,7 +193,7 @@ object WhatsAppOrderCaptureHub {
 
         var totalOrders = 0
         var count = 0
-        addCrawlerLog("📂 Scanning WhatsApp Chat Export: ${messagesByContact.size} participants found")
+        addSyncLog("📂 Scanning WhatsApp Chat Export: ${messagesByContact.size} contacts found")
 
         for ((contact, textBuilder) in messagesByContact) {
             count++
@@ -248,7 +208,47 @@ object WhatsAppOrderCaptureHub {
             }
         }
 
-        addCrawlerLog("🎉 Chat Export processed! Found $totalOrders bakery orders.")
+        addSyncLog("🎉 Chat Export processed! Found $totalOrders bakery orders.")
         totalOrders
+    }
+
+    /**
+     * Parse Official WhatsApp Business Cloud API incoming Webhook JSON payload
+     */
+    fun processCloudApiWebhookPayload(payloadJson: String, context: Context? = null): Boolean {
+        return try {
+            val root = JSONObject(payloadJson)
+            val entry = root.optJSONArray("entry")?.optJSONObject(0) ?: return false
+            val changes = entry.optJSONArray("changes")?.optJSONObject(0) ?: return false
+            val value = changes.optJSONObject("value") ?: return false
+            val contacts = value.optJSONArray("contacts")
+            val contactName = contacts?.optJSONObject(0)?.optJSONObject("profile")?.optString("name", "WhatsApp Customer") ?: "WhatsApp Customer"
+            
+            val messages = value.optJSONArray("messages") ?: return false
+            if (messages.length() == 0) return false
+            
+            val messageObj = messages.optJSONObject(0) ?: return false
+            val msgType = messageObj.optString("type", "text")
+            val messageBody = if (msgType == "text") {
+                messageObj.optJSONObject("text")?.optString("body", "") ?: ""
+            } else {
+                messageObj.optString("text", "")
+            }
+            
+            if (messageBody.isNotBlank()) {
+                processCapturedWhatsAppMessage(
+                    senderName = contactName,
+                    messageText = messageBody,
+                    source = "WhatsApp Cloud API",
+                    context = context
+                )
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing Cloud API webhook", e)
+            false
+        }
     }
 }

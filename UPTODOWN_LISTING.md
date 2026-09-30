@@ -9,9 +9,9 @@ Yeh document aapko Uptodown Developer Console (`developers.uptodown.com`) par di
 | Field Name | Value to Enter |
 | :--- | :--- |
 | **App Title** | BatchCost: Bakery Cost & Orders |
-| **Package Name** | `com.batchcost.bakerypro` |
-| **Version Name** | `1.0` |
-| **Version Code** | `1` |
+| **Package Name** | `com.batchcost.app` |
+| **Version Name** | `1.0.2` |
+| **Version Code** | `2` |
 | **Category** | Business / Productivity (या Lifestyle / Food & Drink) |
 | **Language** | English, Hindi (Multilingual) |
 | **Content Rating / Maturity** | PEGI 3 / Everyone (All ages) |

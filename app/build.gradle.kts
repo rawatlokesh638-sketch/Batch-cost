@@ -15,28 +15,31 @@ android {
   namespace = "com.example"
 
   defaultConfig {
-    applicationId = "com.batchcost.bakerypro"
+    applicationId = "com.batchcost.app"
     minSdk = 24
     targetSdk = 35
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = 2
+    versionName = "1.0.2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      storeFile = file("${rootDir}/batchcost-release.jks")
+      storePassword = "batchcost123"
+      keyAlias = "batchcost"
+      keyPassword = "batchcost123"
+      enableV1Signing = true
+      enableV2Signing = true
     }
     create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+      storeFile = file("${rootDir}/batchcost-release.jks")
+      storePassword = "batchcost123"
+      keyAlias = "batchcost"
+      keyPassword = "batchcost123"
+      enableV1Signing = true
+      enableV2Signing = true
     }
   }
 
@@ -48,9 +51,8 @@ android {
       signingConfig = signingConfigs.getByName("release")
     }
     debug {
-      if (file("${rootDir}/debug.keystore").exists()) {
-        signingConfig = signingConfigs.getByName("debugConfig")
-      }
+      isMinifyEnabled = false
+      signingConfig = signingConfigs.getByName("debugConfig")
     }
   }
   compileOptions {

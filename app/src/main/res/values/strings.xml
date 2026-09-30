@@ -1,6 +1,3 @@
 <resources>
     <string name="app_name">BatchCost</string>
-    <string name="accessibility_service_name">BatchCost WhatsApp Auto-Order Detector</string>
-    <string name="accessibility_service_description">Enables BatchCost AI Agent to automatically detect and scan bakery cake orders inside WhatsApp and auto-record them.</string>
-    <string name="notification_listener_service_name">BatchCost WhatsApp Notification Scanner</string>
 </resources>
